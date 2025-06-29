@@ -111,7 +111,6 @@ const AdminDashboard: React.FC = () => {
       'Pratheeksha Membership No': user.pratheekshaMembershipNumber || '',
       'Recommended By': user.recommendedBy,
       'Status': user.status,
-      'Role': user.role,
       'Registration Date': new Date(user.registrationDate).toLocaleDateString(),
       'Payment Status': user.paymentStatus ? 'Paid' : 'Unpaid',
       'Payment Remarks': user.paymentRemarks || ''
