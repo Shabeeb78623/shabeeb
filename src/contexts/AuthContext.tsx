@@ -36,6 +36,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  const generateRegNo = () => {
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const nextNumber = users.length + 1;
+    return nextNumber.toString().padStart(4, '0');
+  };
+
   const login = async (email: string, password: string): Promise<boolean> => {
     // Check admin credentials
     if (email === 'admin' && password === 'admin123') {
@@ -50,9 +56,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     if (user) {
       setCurrentUser(user);
-      setIsAdmin(false);
+      setIsAdmin(user.role === 'admin');
       localStorage.setItem('currentUser', JSON.stringify(user));
-      localStorage.setItem('isAdmin', 'false');
+      localStorage.setItem('isAdmin', JSON.stringify(user.role === 'admin'));
       return true;
     }
 
@@ -71,20 +77,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const users = JSON.parse(localStorage.getItem('users') || '[]');
       
       // Check if user already exists
-      if (users.some((u: User) => u.email === userData.email || u.emiratesId === userData.emiratesId)) {
+      if (users.some((u: User) => u.email === userData.email || u.mobileNo === userData.mobileNo || u.emiratesId === userData.emiratesId)) {
         return false;
+      }
+
+      // Validate Emirates ID (15 digits)
+      if (!/^\d{15}$/.test(userData.emiratesId)) {
+        throw new Error('Emirates ID must be exactly 15 digits');
       }
 
       const newUser: User = {
         id: Date.now().toString(),
-        name: userData.name,
-        email: userData.email,
-        phone: userData.phone,
-        emiratesId: userData.emiratesId,
+        regNo: generateRegNo(),
+        fullName: userData.fullName,
+        mobileNo: userData.mobileNo,
+        whatsApp: userData.whatsApp,
+        nominee: userData.nominee,
+        relation: userData.relation,
         emirate: userData.emirate,
+        mandalam: userData.mandalam,
+        email: userData.email,
+        addressUAE: userData.addressUAE,
+        addressIndia: userData.addressIndia,
+        kmccMember: userData.kmccMember,
+        kmccMembershipNumber: userData.kmccMembershipNumber,
+        pratheekshaMember: userData.pratheekshaMember,
+        pratheekshaMembershipNumber: userData.pratheekshaMembershipNumber,
+        recommendedBy: userData.recommendedBy,
+        photo: userData.photo,
+        emiratesId: userData.emiratesId,
         status: 'pending',
+        role: 'user',
         registrationDate: new Date().toISOString(),
         paymentStatus: false,
+        benefitsUsed: [],
       };
 
       users.push(newUser);

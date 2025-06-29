@@ -77,23 +77,35 @@ const UserDashboard: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Membership Card */}
+          {/* Pratheeksha Membership Card */}
           {currentUser.status === 'approved' && (
-            <Card className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+            <Card className="bg-gradient-to-r from-green-600 to-blue-600 text-white">
               <CardHeader>
-                <CardTitle>Membership Card</CardTitle>
+                <CardTitle className="text-center text-xl">PRATHEEKSHA MEMBERSHIP CARD</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  <div className="text-lg font-semibold">{currentUser.name}</div>
-                  <div className="text-sm opacity-90">
-                    <p>Phone: {currentUser.phone}</p>
-                    <p>Emirate: {currentUser.emirate}</p>
-                    <p>ID: {currentUser.emiratesId}</p>
+                <div className="flex items-center space-x-4">
+                  {currentUser.photo && (
+                    <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-white">
+                      <img 
+                        src={currentUser.photo} 
+                        alt={currentUser.fullName}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <div className="flex-1 space-y-2">
+                    <div className="text-lg font-bold">REG NO: {currentUser.regNo}</div>
+                    <div className="text-lg font-semibold">{currentUser.fullName}</div>
+                    <div className="text-sm opacity-90">
+                      <p>Phone: {currentUser.mobileNo}</p>
+                      <p>Mandalam: {currentUser.mandalam}</p>
+                      <p>Emirate: {currentUser.emirate}</p>
+                    </div>
                   </div>
-                  <div className="text-xs opacity-75 mt-4">
-                    Member since {new Date(currentUser.registrationDate).getFullYear()}
-                  </div>
+                </div>
+                <div className="text-xs opacity-75 mt-4 text-center">
+                  Member since {new Date(currentUser.registrationDate).getFullYear()}
                 </div>
               </CardContent>
             </Card>
@@ -108,16 +120,20 @@ const UserDashboard: React.FC = () => {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                <p className="text-gray-900">{currentUser.name}</p>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                <p className="text-gray-900">{currentUser.fullName}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <p className="text-gray-900">{currentUser.email}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                <p className="text-gray-900">{currentUser.phone}</p>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
+                <p className="text-gray-900">{currentUser.mobileNo}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
+                <p className="text-gray-900">{currentUser.whatsApp}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Emirates ID</label>
@@ -126,6 +142,14 @@ const UserDashboard: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Emirate</label>
                 <p className="text-gray-900">{currentUser.emirate}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mandalam</label>
+                <p className="text-gray-900">{currentUser.mandalam}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nominee</label>
+                <p className="text-gray-900">{currentUser.nominee} ({currentUser.relation})</p>
               </div>
             </div>
           </CardContent>

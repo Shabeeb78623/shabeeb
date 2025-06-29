@@ -5,7 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { Eye, EyeOff } from 'lucide-react';
 
 interface RegisterProps {
   onSwitchToLogin: () => void;
@@ -21,19 +25,65 @@ const emirates = [
   'Fujairah'
 ];
 
+const mandalams = [
+  'BALUSHERI',
+  'KUNNAMANGALAM',
+  'KODUVALLI',
+  'NADAPURAM',
+  'KOYLANDI',
+  'VADAKARA',
+  'BEPUR',
+  'KUTTIYADI'
+];
+
+const relations = [
+  'Father',
+  'Mother',
+  'Son',
+  'Daughter',
+  'Wife',
+  'Husband'
+];
+
 const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    emiratesId: '',
+    fullName: '',
+    mobileNo: '',
+    whatsApp: '',
+    nominee: '',
+    relation: '',
     emirate: '',
+    mandalam: '',
+    email: '',
+    addressUAE: '',
+    addressIndia: '',
+    kmccMember: false,
+    kmccMembershipNumber: '',
+    pratheekshaMember: false,
+    pratheekshaMembershipNumber: '',
+    recommendedBy: '',
+    photo: '',
+    emiratesId: '',
     password: '',
     confirmPassword: '',
   });
+  
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
   const { toast } = useToast();
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setFormData({ ...formData, photo: event.target?.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +92,15 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
       toast({
         title: "Password Mismatch",
         description: "Passwords do not match.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!/^\d{15}$/.test(formData.emiratesId)) {
+      toast({
+        title: "Invalid Emirates ID",
+        description: "Emirates ID must be exactly 15 digits.",
         variant: "destructive",
       });
       return;
@@ -60,7 +119,7 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
       } else {
         toast({
           title: "Registration Failed",
-          description: "User with this email or Emirates ID already exists.",
+          description: "User with this email, phone number, or Emirates ID already exists.",
           variant: "destructive",
         });
       }
@@ -77,7 +136,7 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-2xl">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold text-gray-800">
             Create Account
@@ -86,60 +145,191 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                type="text"
+                placeholder="Full Name *"
+                value={formData.fullName}
+                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                required
+              />
+              <Input
+                type="tel"
+                placeholder="Mobile Number *"
+                value={formData.mobileNo}
+                onChange={(e) => setFormData({ ...formData, mobileNo: e.target.value })}
+                required
+              />
+              <Input
+                type="tel"
+                placeholder="WhatsApp Number *"
+                value={formData.whatsApp}
+                onChange={(e) => setFormData({ ...formData, whatsApp: e.target.value })}
+                required
+              />
+              <Input
+                type="text"
+                placeholder="Nominee *"
+                value={formData.nominee}
+                onChange={(e) => setFormData({ ...formData, nominee: e.target.value })}
+                required
+              />
+              <Select onValueChange={(value) => setFormData({ ...formData, relation: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Relation *" />
+                </SelectTrigger>
+                <SelectContent>
+                  {relations.map((relation) => (
+                    <SelectItem key={relation} value={relation}>
+                      {relation}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select onValueChange={(value) => setFormData({ ...formData, emirate: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Emirate *" />
+                </SelectTrigger>
+                <SelectContent>
+                  {emirates.map((emirate) => (
+                    <SelectItem key={emirate} value={emirate}>
+                      {emirate}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select onValueChange={(value) => setFormData({ ...formData, mandalam: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Mandalam *" />
+                </SelectTrigger>
+                <SelectContent>
+                  {mandalams.map((mandalam) => (
+                    <SelectItem key={mandalam} value={mandalam}>
+                      {mandalam}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                type="email"
+                placeholder="Email Address *"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                required
+              />
+            </div>
+            
+            <Textarea
+              placeholder="Address UAE *"
+              value={formData.addressUAE}
+              onChange={(e) => setFormData({ ...formData, addressUAE: e.target.value })}
+              required
+            />
+            
+            <Textarea
+              placeholder="Address India *"
+              value={formData.addressIndia}
+              onChange={(e) => setFormData({ ...formData, addressIndia: e.target.value })}
+              required
+            />
+
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="kmcc"
+                  checked={formData.kmccMember}
+                  onCheckedChange={(checked) => setFormData({ ...formData, kmccMember: checked as boolean })}
+                />
+                <Label htmlFor="kmcc">KMCC Member</Label>
+              </div>
+              {formData.kmccMember && (
+                <Input
+                  type="text"
+                  placeholder="KMCC Membership Number"
+                  value={formData.kmccMembershipNumber}
+                  onChange={(e) => setFormData({ ...formData, kmccMembershipNumber: e.target.value })}
+                />
+              )}
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="pratheeksha"
+                  checked={formData.pratheekshaMember}
+                  onCheckedChange={(checked) => setFormData({ ...formData, pratheekshaMember: checked as boolean })}
+                />
+                <Label htmlFor="pratheeksha">Pratheeksha Member</Label>
+              </div>
+              {formData.pratheekshaMember && (
+                <Input
+                  type="text"
+                  placeholder="Pratheeksha Membership Number"
+                  value={formData.pratheekshaMembershipNumber}
+                  onChange={(e) => setFormData({ ...formData, pratheekshaMembershipNumber: e.target.value })}
+                />
+              )}
+            </div>
+
             <Input
               type="text"
-              placeholder="Full Name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
+              placeholder="Recommended By"
+              value={formData.recommendedBy}
+              onChange={(e) => setFormData({ ...formData, recommendedBy: e.target.value })}
             />
-            <Input
-              type="email"
-              placeholder="Email Address"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              required
-            />
-            <Input
-              type="tel"
-              placeholder="Phone Number"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              required
-            />
+
             <Input
               type="text"
-              placeholder="Emirates ID"
+              placeholder="Emirates ID (15 digits) *"
               value={formData.emiratesId}
               onChange={(e) => setFormData({ ...formData, emiratesId: e.target.value })}
+              maxLength={15}
               required
             />
-            <Select onValueChange={(value) => setFormData({ ...formData, emirate: value })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select Emirate" />
-              </SelectTrigger>
-              <SelectContent>
-                {emirates.map((emirate) => (
-                  <SelectItem key={emirate} value={emirate}>
-                    {emirate}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input
-              type="password"
-              placeholder="Password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              required
-            />
-            <Input
-              type="password"
-              placeholder="Confirm Password"
-              value={formData.confirmPassword}
-              onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-              required
-            />
+
+            <div>
+              <Label htmlFor="photo">Upload Photo</Label>
+              <Input
+                id="photo"
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="mt-1"
+              />
+            </div>
+
+            <div className="relative">
+              <Input
+                type={showPassword ? "text" : "password"}
+                placeholder="Password *"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                required
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+
+            <div className="relative">
+              <Input
+                type={showConfirmPassword ? "text" : "password"}
+                placeholder="Confirm Password *"
+                value={formData.confirmPassword}
+                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                required
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Creating Account...' : 'Create Account'}
             </Button>
