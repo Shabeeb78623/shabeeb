@@ -5,6 +5,7 @@ import { User } from '../types/user';
 interface AuthContextType {
   currentUser: User | null;
   isAdmin: boolean;
+  isMasterAdmin: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   register: (userData: any) => Promise<boolean>;
@@ -23,16 +24,21 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isMasterAdmin, setIsMasterAdmin] = useState(false);
 
   useEffect(() => {
     const savedUser = localStorage.getItem('currentUser');
     const savedIsAdmin = localStorage.getItem('isAdmin');
+    const savedIsMasterAdmin = localStorage.getItem('isMasterAdmin');
     
     if (savedUser) {
       setCurrentUser(JSON.parse(savedUser));
     }
     if (savedIsAdmin) {
       setIsAdmin(JSON.parse(savedIsAdmin));
+    }
+    if (savedIsMasterAdmin) {
+      setIsMasterAdmin(JSON.parse(savedIsMasterAdmin));
     }
   }, []);
 
@@ -43,10 +49,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // Check admin credentials
+    // Check master admin credentials
     if (email === 'admin' && password === 'admin123') {
       setIsAdmin(true);
+      setIsMasterAdmin(true);
       localStorage.setItem('isAdmin', 'true');
+      localStorage.setItem('isMasterAdmin', 'true');
       return true;
     }
 
@@ -56,9 +64,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     if (user) {
       setCurrentUser(user);
-      setIsAdmin(false);
+      setIsAdmin(user.role === 'admin');
+      setIsMasterAdmin(false);
       localStorage.setItem('currentUser', JSON.stringify(user));
-      localStorage.setItem('isAdmin', 'false');
+      localStorage.setItem('isAdmin', user.role === 'admin' ? 'true' : 'false');
+      localStorage.setItem('isMasterAdmin', 'false');
       return true;
     }
 
@@ -68,8 +78,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setCurrentUser(null);
     setIsAdmin(false);
+    setIsMasterAdmin(false);
     localStorage.removeItem('currentUser');
     localStorage.removeItem('isAdmin');
+    localStorage.removeItem('isMasterAdmin');
   };
 
   const register = async (userData: any): Promise<boolean> => {
@@ -107,8 +119,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         photo: userData.photo,
         emiratesId: userData.emiratesId,
         status: 'pending',
+        role: 'user',
         registrationDate: new Date().toISOString(),
         paymentStatus: false,
+        paymentSubmission: {
+          submitted: false,
+          approvalStatus: 'pending'
+        },
         benefitsUsed: [],
       };
 
@@ -125,6 +142,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider value={{
       currentUser,
       isAdmin,
+      isMasterAdmin,
       login,
       logout,
       register,

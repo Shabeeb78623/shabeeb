@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { Search } from 'lucide-react';
 
 interface BenefitManagerProps {
   users: User[];
@@ -24,6 +25,7 @@ const benefitTypes = [
 
 const BenefitManager: React.FC<BenefitManagerProps> = ({ users, onUpdateUser }) => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const [benefitForm, setBenefitForm] = useState({
     type: '',
     remarks: '',
@@ -32,9 +34,22 @@ const BenefitManager: React.FC<BenefitManagerProps> = ({ users, onUpdateUser }) 
   const { toast } = useToast();
 
   const approvedUsers = users.filter(user => user.status === 'approved');
+  
+  const filteredUsers = approvedUsers.filter(user =>
+    user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.regNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleAddBenefit = () => {
-    if (!selectedUser || !benefitForm.type) return;
+    if (!selectedUser || !benefitForm.type || benefitForm.amountPaid <= 0) {
+      toast({
+        title: "Invalid Input",
+        description: "Please fill all fields and enter a valid amount.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     const newBenefit: BenefitUsage = {
       id: Date.now().toString(),
@@ -46,7 +61,7 @@ const BenefitManager: React.FC<BenefitManagerProps> = ({ users, onUpdateUser }) 
 
     const updatedUser = {
       ...selectedUser,
-      benefitsUsed: [...selectedUser.benefitsUsed, newBenefit],
+      benefitsUsed: [...(selectedUser.benefitsUsed || []), newBenefit],
     };
 
     onUpdateUser(updatedUser);
@@ -66,17 +81,27 @@ const BenefitManager: React.FC<BenefitManagerProps> = ({ users, onUpdateUser }) 
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search users by name, reg no, or email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+
           <div>
             <label className="block text-sm font-medium mb-2">Select User</label>
             <Select onValueChange={(userId) => {
-              const user = approvedUsers.find(u => u.id === userId);
+              const user = filteredUsers.find(u => u.id === userId);
               setSelectedUser(user || null);
             }}>
               <SelectTrigger>
                 <SelectValue placeholder="Select user to add benefit" />
               </SelectTrigger>
               <SelectContent>
-                {approvedUsers.map((user) => (
+                {filteredUsers.map((user) => (
                   <SelectItem key={user.id} value={user.id}>
                     {user.fullName} - {user.regNo}
                   </SelectItem>
@@ -108,9 +133,11 @@ const BenefitManager: React.FC<BenefitManagerProps> = ({ users, onUpdateUser }) 
 
                 <Input
                   type="number"
-                  placeholder="Amount Paid"
-                  value={benefitForm.amountPaid}
+                  placeholder="Amount Paid (AED)"
+                  value={benefitForm.amountPaid || ''}
                   onChange={(e) => setBenefitForm({ ...benefitForm, amountPaid: Number(e.target.value) })}
+                  min="1"
+                  required
                 />
               </div>
 
@@ -120,11 +147,14 @@ const BenefitManager: React.FC<BenefitManagerProps> = ({ users, onUpdateUser }) 
                 onChange={(e) => setBenefitForm({ ...benefitForm, remarks: e.target.value })}
               />
 
-              <Button onClick={handleAddBenefit} disabled={!benefitForm.type}>
+              <Button 
+                onClick={handleAddBenefit} 
+                disabled={!benefitForm.type || benefitForm.amountPaid <= 0}
+              >
                 Add Benefit
               </Button>
 
-              {selectedUser.benefitsUsed.length > 0 && (
+              {selectedUser.benefitsUsed && selectedUser.benefitsUsed.length > 0 && (
                 <div className="mt-4">
                   <h4 className="font-medium mb-2">Previous Benefits:</h4>
                   <div className="space-y-2">

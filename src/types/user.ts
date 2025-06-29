@@ -20,10 +20,17 @@ export interface User {
   photo?: string;
   emiratesId: string;
   status: 'pending' | 'approved' | 'rejected';
+  role: 'user' | 'admin';
   registrationDate: string;
   approvalDate?: string;
   paymentStatus: boolean;
   paymentRemarks?: string;
+  paymentSubmission?: {
+    submitted: boolean;
+    submissionDate?: string;
+    approvalStatus: 'pending' | 'approved' | 'declined';
+    adminRemarks?: string;
+  };
   benefitsUsed: BenefitUsage[];
 }
 
