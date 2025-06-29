@@ -28,6 +28,16 @@ const UserDashboard: React.FC = () => {
     }
   };
 
+  const getBenefitTypeLabel = (type: string) => {
+    switch (type) {
+      case 'hospital': return 'Hospital';
+      case 'death': return 'Death';
+      case 'gulf_returnee': return 'Gulf Returnee';
+      case 'cancer': return 'Cancer';
+      default: return type;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <header className="bg-white shadow-sm border-b">
@@ -111,6 +121,41 @@ const UserDashboard: React.FC = () => {
             </Card>
           )}
         </div>
+
+        {/* Benefits Used Section */}
+        {currentUser.status === 'approved' && currentUser.benefitsUsed.length > 0 && (
+          <Card className="mt-8">
+            <CardHeader>
+              <CardTitle>Benefits Used</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {currentUser.benefitsUsed.map((benefit) => (
+                  <div key={benefit.id} className="border rounded-lg p-4 bg-gray-50">
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <Badge variant="outline" className="font-medium">
+                            {getBenefitTypeLabel(benefit.type)}
+                          </Badge>
+                          <span className="text-sm text-gray-600">
+                            {new Date(benefit.date).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-700">{benefit.remarks}</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-semibold text-green-600">
+                          AED {benefit.amountPaid}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* User Information */}
         <Card className="mt-8">

@@ -56,9 +56,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     if (user) {
       setCurrentUser(user);
-      setIsAdmin(user.role === 'admin');
+      setIsAdmin(false);
       localStorage.setItem('currentUser', JSON.stringify(user));
-      localStorage.setItem('isAdmin', JSON.stringify(user.role === 'admin'));
+      localStorage.setItem('isAdmin', 'false');
       return true;
     }
 
@@ -107,7 +107,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         photo: userData.photo,
         emiratesId: userData.emiratesId,
         status: 'pending',
-        role: 'user',
         registrationDate: new Date().toISOString(),
         paymentStatus: false,
         benefitsUsed: [],

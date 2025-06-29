@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -46,18 +45,6 @@ const AdminDashboard: React.FC = () => {
       title: "User Deleted",
       description: "User has been permanently deleted.",
     });
-  };
-
-  const assignRole = (userId: string, role: 'user' | 'admin') => {
-    const user = users.find(u => u.id === userId);
-    if (user) {
-      const updatedUser = { ...user, role };
-      updateUser(updatedUser);
-      toast({
-        title: "Role Updated",
-        description: `User role has been updated to ${role}.`,
-      });
-    }
   };
 
   const approveUser = (userId: string) => {
@@ -157,7 +144,6 @@ const AdminDashboard: React.FC = () => {
     approved: users.filter(u => u.status === 'approved').length,
     rejected: users.filter(u => u.status === 'rejected').length,
     paid: users.filter(u => u.paymentStatus).length,
-    admins: users.filter(u => u.role === 'admin').length,
   };
 
   return (
@@ -180,7 +166,7 @@ const AdminDashboard: React.FC = () => {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
           <Card>
             <CardContent className="p-4">
               <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
@@ -211,21 +197,14 @@ const AdminDashboard: React.FC = () => {
               <div className="text-sm text-gray-600">Paid</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-orange-600">{stats.admins}</div>
-              <div className="text-sm text-gray-600">Admins</div>
-            </CardContent>
-          </Card>
         </div>
 
         <Tabs defaultValue="approvals" className="space-y-4">
-          <TabsList className="grid grid-cols-5 w-full">
+          <TabsList className="grid grid-cols-4 w-full">
             <TabsTrigger value="approvals">User Approvals</TabsTrigger>
             <TabsTrigger value="users">All Users</TabsTrigger>
             <TabsTrigger value="payments">Payment Management</TabsTrigger>
             <TabsTrigger value="benefits">Benefit Management</TabsTrigger>
-            <TabsTrigger value="roles">Role Management</TabsTrigger>
           </TabsList>
 
           {/* User Approvals Tab */}
@@ -294,9 +273,6 @@ const AdminDashboard: React.FC = () => {
                               user.status === 'pending' ? 'bg-yellow-500' : 'bg-red-500'
                             }>
                               {user.status}
-                            </Badge>
-                            <Badge variant="outline">
-                              {user.role}
                             </Badge>
                             <Badge variant="secondary">
                               {user.regNo}
@@ -441,46 +417,6 @@ const AdminDashboard: React.FC = () => {
           {/* Benefit Management Tab */}
           <TabsContent value="benefits">
             <BenefitManager users={users} onUpdateUser={updateUser} />
-          </TabsContent>
-
-          {/* Role Management Tab */}
-          <TabsContent value="roles">
-            <Card>
-              <CardHeader>
-                <CardTitle>Role Management</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {users.filter(user => user.status === 'approved').map(user => (
-                    <div key={user.id} className="border rounded-lg p-4">
-                      <div className="flex justify-between items-center">
-                        <div className="space-y-1">
-                          <h3 className="font-semibold">{user.fullName}</h3>
-                          <p className="text-sm text-gray-600">{user.email}</p>
-                          <Badge variant="outline">Current: {user.role}</Badge>
-                        </div>
-                        <div className="flex space-x-2">
-                          <Button
-                            variant={user.role === 'user' ? 'default' : 'outline'}
-                            onClick={() => assignRole(user.id, 'user')}
-                            disabled={user.role === 'user'}
-                          >
-                            Make User
-                          </Button>
-                          <Button
-                            variant={user.role === 'admin' ? 'default' : 'outline'}
-                            onClick={() => assignRole(user.id, 'admin')}
-                            disabled={user.role === 'admin'}
-                          >
-                            Make Admin
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
         </Tabs>
       </main>

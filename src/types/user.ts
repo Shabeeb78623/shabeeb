@@ -20,7 +20,6 @@ export interface User {
   photo?: string;
   emiratesId: string;
   status: 'pending' | 'approved' | 'rejected';
-  role: 'user' | 'admin';
   registrationDate: string;
   approvalDate?: string;
   paymentStatus: boolean;
