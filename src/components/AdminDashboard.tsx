@@ -526,6 +526,12 @@ const AdminDashboard: React.FC = () => {
                           <p className="text-sm text-gray-600">
                             Submitted: {new Date(user.paymentSubmission?.submissionDate!).toLocaleDateString()}
                           </p>
+                          {user.paymentSubmission?.userRemarks && (
+                            <div className="bg-gray-50 p-2 rounded">
+                              <p className="text-sm font-medium text-gray-700">User Remarks:</p>
+                              <p className="text-sm text-gray-600">{user.paymentSubmission.userRemarks}</p>
+                            </div>
+                          )}
                           {user.paymentSubmission?.adminRemarks && (
                             <p className="text-sm text-blue-600">
                               Admin Remarks: {user.paymentSubmission.adminRemarks}

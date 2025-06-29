@@ -29,6 +29,7 @@ export interface User {
     submitted: boolean;
     submissionDate?: string;
     approvalStatus: 'pending' | 'approved' | 'declined';
+    userRemarks?: string;
     adminRemarks?: string;
   };
   benefitsUsed: BenefitUsage[];

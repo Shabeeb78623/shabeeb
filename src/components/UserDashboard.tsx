@@ -1,20 +1,32 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import AdminDashboard from './AdminDashboard';
 
 const UserDashboard: React.FC = () => {
   const { currentUser, isAdmin, logout } = useAuth();
   const [submittingPayment, setSubmittingPayment] = useState(false);
+  const [paymentRemarks, setPaymentRemarks] = useState('');
   const { toast } = useToast();
 
   if (!currentUser) return null;
 
   const handlePaymentSubmission = () => {
+    if (!paymentRemarks.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter payment remarks before submitting.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setSubmittingPayment(true);
     
     // Update user's payment submission status
@@ -26,7 +38,8 @@ const UserDashboard: React.FC = () => {
           paymentSubmission: {
             submitted: true,
             submissionDate: new Date().toISOString(),
-            approvalStatus: 'pending'
+            approvalStatus: 'pending',
+            userRemarks: paymentRemarks.trim()
           }
         };
       }
@@ -39,11 +52,13 @@ const UserDashboard: React.FC = () => {
       paymentSubmission: {
         submitted: true,
         submissionDate: new Date().toISOString(),
-        approvalStatus: 'pending'
+        approvalStatus: 'pending',
+        userRemarks: paymentRemarks.trim()
       }
     }));
     
     setSubmittingPayment(false);
+    setPaymentRemarks('');
     toast({
       title: "Payment Submitted",
       description: "Your payment submission is now pending admin approval.",
@@ -159,6 +174,11 @@ const UserDashboard: React.FC = () => {
                             <p className="text-sm text-gray-600">
                               Submitted: {new Date(currentUser.paymentSubmission.submissionDate!).toLocaleDateString()}
                             </p>
+                            {currentUser.paymentSubmission.userRemarks && (
+                              <p className="text-sm text-gray-700">
+                                Your Remarks: {currentUser.paymentSubmission.userRemarks}
+                              </p>
+                            )}
                             {currentUser.paymentSubmission.adminRemarks && (
                               <p className="text-sm text-blue-600">
                                 Admin Remarks: {currentUser.paymentSubmission.adminRemarks}
@@ -166,11 +186,23 @@ const UserDashboard: React.FC = () => {
                             )}
                           </div>
                         ) : (
-                          <div className="space-y-2">
+                          <div className="space-y-4">
                             <p className="text-sm text-gray-600">Submit your payment for approval</p>
+                            <div className="space-y-2">
+                              <label className="block text-sm font-medium text-gray-700">
+                                Payment Remarks (Required)
+                              </label>
+                              <Textarea
+                                placeholder="Enter payment details, transaction ID, or any relevant information..."
+                                value={paymentRemarks}
+                                onChange={(e) => setPaymentRemarks(e.target.value)}
+                                rows={3}
+                              />
+                            </div>
                             <Button 
                               onClick={handlePaymentSubmission}
-                              disabled={submittingPayment}
+                              disabled={submittingPayment || !paymentRemarks.trim()}
+                              className="w-full"
                             >
                               {submittingPayment ? 'Submitting...' : 'Submit Payment'}
                             </Button>
@@ -355,7 +387,7 @@ const UserDashboard: React.FC = () => {
 
         {/* Payment Status Card */}
         {currentUser.status === 'approved' && (
-          <Card>
+          <Card className="mt-8">
             <CardHeader>
               <CardTitle>Payment Status</CardTitle>
             </CardHeader>
@@ -372,6 +404,11 @@ const UserDashboard: React.FC = () => {
                     <p className="text-sm text-gray-600">
                       Submitted: {new Date(currentUser.paymentSubmission.submissionDate!).toLocaleDateString()}
                     </p>
+                    {currentUser.paymentSubmission.userRemarks && (
+                      <p className="text-sm text-gray-700">
+                        Your Remarks: {currentUser.paymentSubmission.userRemarks}
+                      </p>
+                    )}
                     {currentUser.paymentSubmission.adminRemarks && (
                       <p className="text-sm text-blue-600">
                         Admin Remarks: {currentUser.paymentSubmission.adminRemarks}
@@ -379,11 +416,23 @@ const UserDashboard: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-4">
                     <p className="text-sm text-gray-600">Submit your payment for approval</p>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Payment Remarks (Required)
+                      </label>
+                      <Textarea
+                        placeholder="Enter payment details, transaction ID, or any relevant information..."
+                        value={paymentRemarks}
+                        onChange={(e) => setPaymentRemarks(e.target.value)}
+                        rows={3}
+                      />
+                    </div>
                     <Button 
                       onClick={handlePaymentSubmission}
-                      disabled={submittingPayment}
+                      disabled={submittingPayment || !paymentRemarks.trim()}
+                      className="w-full"
                     >
                       {submittingPayment ? 'Submitting...' : 'Submit Payment'}
                     </Button>
