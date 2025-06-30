@@ -11,7 +11,7 @@ interface LoginProps {
 }
 
 const Login: React.FC<LoginProps> = ({ onSwitchToRegister }) => {
-  const [credentials, setCredentials] = useState({ email: '', password: '' });
+  const [credentials, setCredentials] = useState({ phone: '', emiratesId: '' });
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const { toast } = useToast();
@@ -21,7 +21,7 @@ const Login: React.FC<LoginProps> = ({ onSwitchToRegister }) => {
     setLoading(true);
 
     try {
-      const success = await login(credentials.email, credentials.password);
+      const success = await login(credentials.phone, credentials.emiratesId);
       if (success) {
         toast({
           title: "Login Successful",
@@ -59,18 +59,18 @@ const Login: React.FC<LoginProps> = ({ onSwitchToRegister }) => {
             <div>
               <Input
                 type="text"
-                placeholder="Email or Username"
-                value={credentials.email}
-                onChange={(e) => setCredentials({ ...credentials, email: e.target.value })}
+                placeholder="Phone Number"
+                value={credentials.phone}
+                onChange={(e) => setCredentials({ ...credentials, phone: e.target.value })}
                 required
               />
             </div>
             <div>
               <Input
                 type="password"
-                placeholder="Password"
-                value={credentials.password}
-                onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
+                placeholder="Emirates ID"
+                value={credentials.emiratesId}
+                onChange={(e) => setCredentials({ ...credentials, emiratesId: e.target.value })}
                 required
               />
             </div>
@@ -87,11 +87,6 @@ const Login: React.FC<LoginProps> = ({ onSwitchToRegister }) => {
               >
                 Register here
               </button>
-            </p>
-          </div>
-          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-            <p className="text-xs text-gray-500 text-center">
-              Admin Login: admin / admin123
             </p>
           </div>
         </CardContent>
