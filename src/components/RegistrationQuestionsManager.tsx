@@ -12,11 +12,13 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2, GripVertical } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
+type FieldType = 'text' | 'select' | 'checkbox' | 'textarea';
+
 interface RegistrationQuestion {
   id: string;
   question_key: string;
   question_text: string;
-  field_type: 'text' | 'select' | 'checkbox' | 'textarea';
+  field_type: FieldType;
   options?: string[];
   required: boolean;
   order_index: number;
@@ -28,7 +30,7 @@ const RegistrationQuestionsManager: React.FC = () => {
   const [questionForm, setQuestionForm] = useState({
     question_key: '',
     question_text: '',
-    field_type: 'text' as const,
+    field_type: 'text' as FieldType,
     options: [] as string[],
     required: true,
   });
@@ -47,7 +49,19 @@ const RegistrationQuestionsManager: React.FC = () => {
         .order('order_index');
 
       if (error) throw error;
-      setQuestions(data || []);
+      
+      // Transform the data to match our interface
+      const transformedQuestions: RegistrationQuestion[] = (data || []).map(question => ({
+        id: question.id,
+        question_key: question.question_key,
+        question_text: question.question_text,
+        field_type: question.field_type as FieldType,
+        options: Array.isArray(question.options) ? question.options as string[] : undefined,
+        required: question.required,
+        order_index: question.order_index
+      }));
+      
+      setQuestions(transformedQuestions);
     } catch (error) {
       toast({
         title: "Error",
@@ -194,7 +208,7 @@ const RegistrationQuestionsManager: React.FC = () => {
                 />
                 <Select
                   value={questionForm.field_type}
-                  onValueChange={(value: any) => setQuestionForm({ ...questionForm, field_type: value })}
+                  onValueChange={(value: FieldType) => setQuestionForm({ ...questionForm, field_type: value })}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -284,7 +298,7 @@ const RegistrationQuestionsManager: React.FC = () => {
                             />
                             <Select
                               value={editingQuestion.field_type}
-                              onValueChange={(value: any) => setEditingQuestion({ 
+                              onValueChange={(value: FieldType) => setEditingQuestion({ 
                                 ...editingQuestion, 
                                 field_type: value 
                               })}

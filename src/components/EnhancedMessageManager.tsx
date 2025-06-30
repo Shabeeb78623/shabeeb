@@ -47,7 +47,17 @@ const EnhancedMessageManager: React.FC<EnhancedMessageManagerProps> = ({ users, 
         .select('*');
 
       if (error) throw error;
-      setTemplates(data || []);
+      
+      // Transform the data to match our interface
+      const transformedTemplates: MessageTemplate[] = (data || []).map(template => ({
+        id: template.id,
+        template_name: template.template_name,
+        subject: template.subject,
+        message_content: template.message_content,
+        variables: Array.isArray(template.variables) ? template.variables as string[] : []
+      }));
+      
+      setTemplates(transformedTemplates);
     } catch (error) {
       console.error('Error fetching templates:', error);
     }
@@ -196,7 +206,7 @@ const EnhancedMessageManager: React.FC<EnhancedMessageManagerProps> = ({ users, 
           <Checkbox
             id="unpaid-only"
             checked={sendToUnpaid}
-            onCheckedChange={setSendToUnpaid}
+            onCheckedChange={(checked) => setSendToUnpaid(checked === true)}
           />
           <label htmlFor="unpaid-only" className="text-sm">
             Send only to users who haven't paid
