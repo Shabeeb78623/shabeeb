@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import AdminDashboard from './AdminDashboard';
 
@@ -13,15 +14,16 @@ const UserDashboard: React.FC = () => {
   const { currentUser, isAdmin, logout } = useAuth();
   const [submittingPayment, setSubmittingPayment] = useState(false);
   const [paymentRemarks, setPaymentRemarks] = useState('');
+  const [paymentAmount, setPaymentAmount] = useState<number>(0);
   const { toast } = useToast();
 
   if (!currentUser) return null;
 
   const handlePaymentSubmission = () => {
-    if (!paymentRemarks.trim()) {
+    if (!paymentRemarks.trim() || paymentAmount <= 0) {
       toast({
         title: "Error",
-        description: "Please enter payment remarks before submitting.",
+        description: "Please enter payment remarks and amount before submitting.",
         variant: "destructive"
       });
       return;
@@ -39,7 +41,8 @@ const UserDashboard: React.FC = () => {
             submitted: true,
             submissionDate: new Date().toISOString(),
             approvalStatus: 'pending',
-            userRemarks: paymentRemarks.trim()
+            userRemarks: paymentRemarks.trim(),
+            amount: paymentAmount
           }
         };
       }
@@ -53,12 +56,14 @@ const UserDashboard: React.FC = () => {
         submitted: true,
         submissionDate: new Date().toISOString(),
         approvalStatus: 'pending',
-        userRemarks: paymentRemarks.trim()
+        userRemarks: paymentRemarks.trim(),
+        amount: paymentAmount
       }
     }));
     
     setSubmittingPayment(false);
     setPaymentRemarks('');
+    setPaymentAmount(0);
     toast({
       title: "Payment Submitted",
       description: "Your payment submission is now pending admin approval.",
@@ -174,6 +179,11 @@ const UserDashboard: React.FC = () => {
                             <p className="text-sm text-gray-600">
                               Submitted: {new Date(currentUser.paymentSubmission.submissionDate!).toLocaleDateString()}
                             </p>
+                            {currentUser.paymentSubmission.amount && (
+                              <p className="text-sm font-semibold text-green-600">
+                                Amount: AED {currentUser.paymentSubmission.amount}
+                              </p>
+                            )}
                             {currentUser.paymentSubmission.userRemarks && (
                               <p className="text-sm text-gray-700">
                                 Your Remarks: {currentUser.paymentSubmission.userRemarks}
@@ -190,6 +200,19 @@ const UserDashboard: React.FC = () => {
                             <p className="text-sm text-gray-600">Submit your payment for approval</p>
                             <div className="space-y-2">
                               <label className="block text-sm font-medium text-gray-700">
+                                Payment Amount (AED) *
+                              </label>
+                              <Input
+                                type="number"
+                                placeholder="Enter payment amount..."
+                                value={paymentAmount || ''}
+                                onChange={(e) => setPaymentAmount(Number(e.target.value))}
+                                min="1"
+                                required
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="block text-sm font-medium text-gray-700">
                                 Payment Remarks (Required)
                               </label>
                               <Textarea
@@ -201,7 +224,7 @@ const UserDashboard: React.FC = () => {
                             </div>
                             <Button 
                               onClick={handlePaymentSubmission}
-                              disabled={submittingPayment || !paymentRemarks.trim()}
+                              disabled={submittingPayment || !paymentRemarks.trim() || paymentAmount <= 0}
                               className="w-full"
                             >
                               {submittingPayment ? 'Submitting...' : 'Submit Payment'}
@@ -404,6 +427,11 @@ const UserDashboard: React.FC = () => {
                     <p className="text-sm text-gray-600">
                       Submitted: {new Date(currentUser.paymentSubmission.submissionDate!).toLocaleDateString()}
                     </p>
+                    {currentUser.paymentSubmission.amount && (
+                      <p className="text-sm font-semibold text-green-600">
+                        Amount: AED {currentUser.paymentSubmission.amount}
+                      </p>
+                    )}
                     {currentUser.paymentSubmission.userRemarks && (
                       <p className="text-sm text-gray-700">
                         Your Remarks: {currentUser.paymentSubmission.userRemarks}
@@ -420,6 +448,19 @@ const UserDashboard: React.FC = () => {
                     <p className="text-sm text-gray-600">Submit your payment for approval</p>
                     <div className="space-y-2">
                       <label className="block text-sm font-medium text-gray-700">
+                        Payment Amount (AED) *
+                      </label>
+                      <Input
+                        type="number"
+                        placeholder="Enter payment amount..."
+                        value={paymentAmount || ''}
+                        onChange={(e) => setPaymentAmount(Number(e.target.value))}
+                        min="1"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700">
                         Payment Remarks (Required)
                       </label>
                       <Textarea
@@ -431,7 +472,7 @@ const UserDashboard: React.FC = () => {
                     </div>
                     <Button 
                       onClick={handlePaymentSubmission}
-                      disabled={submittingPayment || !paymentRemarks.trim()}
+                      disabled={submittingPayment || !paymentRemarks.trim() || paymentAmount <= 0}
                       className="w-full"
                     >
                       {submittingPayment ? 'Submitting...' : 'Submit Payment'}

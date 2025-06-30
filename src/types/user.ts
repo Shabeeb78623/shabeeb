@@ -20,10 +20,12 @@ export interface User {
   photo?: string;
   emiratesId: string;
   status: 'pending' | 'approved' | 'rejected';
-  role: 'user' | 'admin';
+  role: 'user' | 'admin' | 'master_admin' | 'mandalam_admin';
+  mandalamAccess?: 'BALUSHERI' | 'KUNNAMANGALAM' | 'KODUVALLI' | 'NADAPURAM' | 'KOYLANDI' | 'VADAKARA' | 'BEPUR' | 'KUTTIYADI';
   registrationDate: string;
   approvalDate?: string;
   paymentStatus: boolean;
+  paymentAmount?: number;
   paymentRemarks?: string;
   paymentSubmission?: {
     submitted: boolean;
@@ -31,6 +33,7 @@ export interface User {
     approvalStatus: 'pending' | 'approved' | 'declined';
     userRemarks?: string;
     adminRemarks?: string;
+    amount?: number;
   };
   benefitsUsed: BenefitUsage[];
 }
