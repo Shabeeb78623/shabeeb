@@ -7,7 +7,7 @@ import UserDashboard from '../components/UserDashboard';
 import AdminDashboard from '../components/AdminDashboard';
 
 const Index = () => {
-  const { currentUser, isAdmin, isMasterAdmin } = useAuth();
+  const { currentUser, isAdmin, isMasterAdmin, currentYear } = useAuth();
   const [showRegister, setShowRegister] = useState(false);
 
   // Show admin dashboard if user is master admin

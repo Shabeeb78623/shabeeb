@@ -20,9 +20,21 @@ export interface User {
   photo?: string;
   emiratesId: string;
   status: 'pending' | 'approved' | 'rejected';
-  role: 'user' | 'admin' | 'master_admin' | 'mandalam_admin';
+  role: 'user' | 'admin' | 'master_admin' | 'mandalam_admin' | 'custom_admin';
   mandalamAccess?: 'BALUSHERI' | 'KUNNAMANGALAM' | 'KODUVALLI' | 'NADAPURAM' | 'KOYLANDI' | 'VADAKARA' | 'BEPUR' | 'KUTTIYADI';
+  customPermissions?: {
+    canViewUsers: boolean;
+    canEditUsers: boolean;
+    canApproveUsers: boolean;
+    canManagePayments: boolean;
+    canManageBenefits: boolean;
+    canSendNotifications: boolean;
+    mandalamAccess?: ('BALUSHERI' | 'KUNNAMANGALAM' | 'KODUVALLI' | 'NADAPURAM' | 'KOYLANDI' | 'VADAKARA' | 'BEPUR' | 'KUTTIYADI')[];
+  };
   registrationDate: string;
+  registrationYear: number;
+  isReregistration?: boolean;
+  originalUserId?: string;
   approvalDate?: string;
   paymentStatus: boolean;
   paymentAmount?: number;
@@ -36,6 +48,18 @@ export interface User {
     amount?: number;
   };
   benefitsUsed: BenefitUsage[];
+  notifications: Notification[];
+  passwordResetToken?: string;
+  passwordResetExpiry?: string;
+}
+
+export interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  date: string;
+  read: boolean;
+  fromAdmin: string;
 }
 
 export interface BenefitUsage {
@@ -70,4 +94,12 @@ export interface RegisterData {
   photo?: string;
   emiratesId: string;
   password: string;
+  isReregistration?: boolean;
+  originalUserId?: string;
+}
+
+export interface YearlyData {
+  year: number;
+  users: User[];
+  isActive: boolean;
 }

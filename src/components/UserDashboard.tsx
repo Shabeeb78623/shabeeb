@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -7,14 +6,21 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { Bell, Eye, EyeOff } from 'lucide-react';
 import AdminDashboard from './AdminDashboard';
 
 const UserDashboard: React.FC = () => {
-  const { currentUser, isAdmin, logout } = useAuth();
+  const { currentUser, isAdmin, logout, changePassword } = useAuth();
   const [submittingPayment, setSubmittingPayment] = useState(false);
   const [paymentRemarks, setPaymentRemarks] = useState('');
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
   const { toast } = useToast();
 
   if (!currentUser) return null;
@@ -73,6 +79,63 @@ const UserDashboard: React.FC = () => {
     window.location.reload();
   };
 
+  const handlePasswordChange = async () => {
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "New passwords don't match.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 6 characters long.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const success = await changePassword(oldPassword, newPassword);
+    if (success) {
+      toast({
+        title: "Success",
+        description: "Password changed successfully.",
+      });
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setShowPasswordChange(false);
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to change password. Please check your current password.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const markNotificationAsRead = (notificationId: string) => {
+    const updatedUser = {
+      ...currentUser,
+      notifications: currentUser.notifications?.map(notif => 
+        notif.id === notificationId ? { ...notif, read: true } : notif
+      ) || []
+    };
+    
+    // Update localStorage
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const updatedUsers = users.map((user: any) => 
+      user.id === currentUser.id ? updatedUser : user
+    );
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
+    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+  };
+
+  const unreadNotifications = currentUser.notifications?.filter(n => !n.read).length || 0;
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'approved': return 'bg-green-500';
@@ -109,9 +172,98 @@ const UserDashboard: React.FC = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center py-4">
               <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-              <Button onClick={logout} variant="outline">
-                Logout
-              </Button>
+              <div className="flex items-center space-x-4">
+                {/* Notifications Bell */}
+                <div className="relative">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowNotifications(!showNotifications)}
+                    className="relative"
+                  >
+                    <Bell className="h-4 w-4" />
+                    {unreadNotifications > 0 && (
+                      <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 flex items-center justify-center text-xs">
+                        {unreadNotifications}
+                      </Badge>
+                    )}
+                  </Button>
+                  
+                  {showNotifications && (
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border z-50 max-h-96 overflow-y-auto">
+                      <div className="p-4 border-b">
+                        <h3 className="font-semibold">Notifications</h3>
+                      </div>
+                      <div className="max-h-64 overflow-y-auto">
+                        {currentUser.notifications && currentUser.notifications.length > 0 ? (
+                          currentUser.notifications.map(notification => (
+                            <div 
+                              key={notification.id} 
+                              className={`p-3 border-b cursor-pointer hover:bg-gray-50 ${!notification.read ? 'bg-blue-50' : ''}`}
+                              onClick={() => markNotificationAsRead(notification.id)}
+                            >
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <h4 className="font-medium text-sm">{notification.title}</h4>
+                                  <p className="text-xs text-gray-600 mt-1">{notification.message}</p>
+                                  <p className="text-xs text-gray-400 mt-1">
+                                    From: {notification.fromAdmin} • {new Date(notification.date).toLocaleDateString()}
+                                  </p>
+                                </div>
+                                {!notification.read && (
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-4 text-center text-gray-500">No notifications</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <Dialog open={showPasswordChange} onOpenChange={setShowPasswordChange}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      Change Password
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Change Password</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <Input
+                        type="password"
+                        placeholder="Current password"
+                        value={oldPassword}
+                        onChange={(e) => setOldPassword(e.target.value)}
+                      />
+                      <Input
+                        type="password"
+                        placeholder="New password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                      />
+                      <Input
+                        type="password"
+                        placeholder="Confirm new password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                      />
+                      <Button onClick={handlePasswordChange} className="w-full">
+                        Change Password
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
+                <Button onClick={logout} variant="outline">
+                  Logout
+                </Button>
+              </div>
             </div>
           </div>
         </header>
@@ -359,16 +511,105 @@ const UserDashboard: React.FC = () => {
     );
   }
 
-  // Regular user dashboard
+  // Regular user dashboard with notifications
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <h1 className="text-2xl font-bold text-gray-800">User Dashboard</h1>
-            <Button onClick={logout} variant="outline">
-              Logout
-            </Button>
+            <div className="flex items-center space-x-4">
+              {/* Notifications Bell */}
+              <div className="relative">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="relative"
+                >
+                  <Bell className="h-4 w-4" />
+                  {unreadNotifications > 0 && (
+                    <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 flex items-center justify-center text-xs">
+                      {unreadNotifications}
+                    </Badge>
+                  )}
+                </Button>
+                
+                {showNotifications && (
+                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border z-50 max-h-96 overflow-y-auto">
+                    <div className="p-4 border-b">
+                      <h3 className="font-semibold">Notifications</h3>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto">
+                      {currentUser.notifications && currentUser.notifications.length > 0 ? (
+                        currentUser.notifications.map(notification => (
+                          <div 
+                            key={notification.id} 
+                            className={`p-3 border-b cursor-pointer hover:bg-gray-50 ${!notification.read ? 'bg-blue-50' : ''}`}
+                            onClick={() => markNotificationAsRead(notification.id)}
+                          >
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <h4 className="font-medium text-sm">{notification.title}</h4>
+                                <p className="text-xs text-gray-600 mt-1">{notification.message}</p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                  From: {notification.fromAdmin} • {new Date(notification.date).toLocaleDateString()}
+                                </p>
+                              </div>
+                              {!notification.read && (
+                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-4 text-center text-gray-500">No notifications</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <Dialog open={showPasswordChange} onOpenChange={setShowPasswordChange}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    Change Password
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Change Password</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <Input
+                      type="password"
+                      placeholder="Current password"
+                      value={oldPassword}
+                      onChange={(e) => setOldPassword(e.target.value)}
+                    />
+                    <Input
+                      type="password"
+                      placeholder="New password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                    />
+                    <Input
+                      type="password"
+                      placeholder="Confirm new password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                    <Button onClick={handlePasswordChange} className="w-full">
+                      Change Password
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              <Button onClick={logout} variant="outline">
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </header>
