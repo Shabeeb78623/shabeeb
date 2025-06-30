@@ -11,7 +11,7 @@ interface LoginProps {
 }
 
 const Login: React.FC<LoginProps> = ({ onSwitchToRegister }) => {
-  const [credentials, setCredentials] = useState({ phone: '', emiratesId: '' });
+  const [credentials, setCredentials] = useState({ emailPhone: '', password: '' });
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const { toast } = useToast();
@@ -21,7 +21,7 @@ const Login: React.FC<LoginProps> = ({ onSwitchToRegister }) => {
     setLoading(true);
 
     try {
-      const success = await login(credentials.phone, credentials.emiratesId);
+      const success = await login(credentials.emailPhone, credentials.password);
       if (success) {
         toast({
           title: "Login Successful",
@@ -59,18 +59,18 @@ const Login: React.FC<LoginProps> = ({ onSwitchToRegister }) => {
             <div>
               <Input
                 type="text"
-                placeholder="Phone Number"
-                value={credentials.phone}
-                onChange={(e) => setCredentials({ ...credentials, phone: e.target.value })}
+                placeholder="Email/Phone Number"
+                value={credentials.emailPhone}
+                onChange={(e) => setCredentials({ ...credentials, emailPhone: e.target.value })}
                 required
               />
             </div>
             <div>
               <Input
                 type="password"
-                placeholder="Emirates ID"
-                value={credentials.emiratesId}
-                onChange={(e) => setCredentials({ ...credentials, emiratesId: e.target.value })}
+                placeholder="Password"
+                value={credentials.password}
+                onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
                 required
               />
             </div>

@@ -26,6 +26,65 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImportComplete }) => {
     }
   };
 
+  const mapColumnToField = (columnName: string): string => {
+    const normalizedColumn = columnName.toLowerCase().trim();
+    
+    // Create a mapping for various possible column names
+    const columnMappings: { [key: string]: string } = {
+      'full name': 'fullName',
+      'name': 'fullName',
+      'fullname': 'fullName',
+      'mobile number': 'mobileNo',
+      'mobile': 'mobileNo',
+      'phone': 'mobileNo',
+      'phone number': 'mobileNo',
+      'mobile no': 'mobileNo',
+      'whatsapp': 'whatsApp',
+      'whatsapp number': 'whatsApp',
+      'whats app': 'whatsApp',
+      'email': 'email',
+      'email address': 'email',
+      'emirates id': 'emiratesId',
+      'emiratesid': 'emiratesId',
+      'emirates': 'emiratesId',
+      'id': 'emiratesId',
+      'emirate': 'emirate',
+      'mandalam': 'mandalam',
+      'nominee': 'nominee',
+      'nominee name': 'nominee',
+      'relation': 'relation',
+      'relationship': 'relation',
+      'address uae': 'addressUAE',
+      'uae address': 'addressUAE',
+      'address in uae': 'addressUAE',
+      'dubai address': 'addressUAE',
+      'address india': 'addressIndia',
+      'india address': 'addressIndia',
+      'address in india': 'addressIndia',
+      'kmcc member': 'kmccMember',
+      'kmcc membership': 'kmccMember',
+      'kmcc': 'kmccMember',
+      'kmcc membership number': 'kmccMembershipNumber',
+      'kmcc number': 'kmccMembershipNumber',
+      'pratheeksha member': 'pratheekshaMember',
+      'pratheeksha membership': 'pratheekshaMember',
+      'pratheeksha': 'pratheekshaMember',
+      'pratheeksha membership number': 'pratheekshaMembershipNumber',
+      'pratheeksha number': 'pratheekshaMembershipNumber',
+      'recommended by': 'recommendedBy',
+      'recommended': 'recommendedBy',
+      'referrer': 'recommendedBy',
+      'photo': 'photo',
+      'image': 'photo',
+      'registration number': 'regNo',
+      'reg no': 'regNo',
+      'regno': 'regNo',
+      'registration no': 'regNo'
+    };
+
+    return columnMappings[normalizedColumn] || normalizedColumn;
+  };
+
   const processExcelFile = async (file: File): Promise<User[]> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -37,34 +96,50 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImportComplete }) => {
           const worksheet = workbook.Sheets[sheetName];
           const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-          const users: User[] = jsonData.map((row: any, index: number) => ({
-            id: `imported_${Date.now()}_${index}`,
-            regNo: row['Registration Number'] || `REG${Date.now()}${index}`,
-            fullName: row['Full Name'] || row['Name'] || '',
-            mobileNo: row['Mobile Number'] || row['Mobile'] || row['Phone'] || '',
-            whatsApp: row['WhatsApp'] || row['Mobile Number'] || row['Mobile'] || row['Phone'] || '',
-            nominee: row['Nominee'] || '',
-            relation: row['Relation'] || 'Father',
-            emirate: row['Emirate'] || '',
-            mandalam: row['Mandalam'] || 'BALUSHERI',
-            email: row['Email'] || '',
-            addressUAE: row['Address UAE'] || row['UAE Address'] || '',
-            addressIndia: row['Address India'] || row['India Address'] || '',
-            kmccMember: Boolean(row['KMCC Member']),
-            kmccMembershipNumber: row['KMCC Membership Number'] || '',
-            pratheekshaMember: Boolean(row['Pratheeksha Member']),
-            pratheekshaMembershipNumber: row['Pratheeksha Membership Number'] || '',
-            recommendedBy: row['Recommended By'] || '',
-            photo: row['Photo'] || '',
-            emiratesId: row['Emirates ID'] || '',
-            status: 'approved' as const,
-            role: 'user' as const,
-            registrationDate: new Date().toISOString(),
-            registrationYear: new Date().getFullYear(),
-            paymentStatus: false,
-            benefitsUsed: [],
-            notifications: [],
-          }));
+          const users: User[] = jsonData.map((row: any, index: number) => {
+            // Create a normalized row object
+            const normalizedRow: any = {};
+            Object.keys(row).forEach(key => {
+              const mappedField = mapColumnToField(key);
+              normalizedRow[mappedField] = row[key];
+            });
+
+            return {
+              id: `imported_${Date.now()}_${index}`,
+              regNo: normalizedRow.regNo || `REG${Date.now()}${index}`,
+              fullName: normalizedRow.fullName || normalizedRow.name || '',
+              mobileNo: normalizedRow.mobileNo || normalizedRow.mobile || normalizedRow.phone || '',
+              whatsApp: normalizedRow.whatsApp || normalizedRow.mobileNo || normalizedRow.mobile || normalizedRow.phone || '',
+              nominee: normalizedRow.nominee || '',
+              relation: normalizedRow.relation || 'Father',
+              emirate: normalizedRow.emirate || '',
+              mandalam: normalizedRow.mandalam || 'BALUSHERI',
+              email: normalizedRow.email || '',
+              addressUAE: normalizedRow.addressUAE || normalizedRow.address || '',
+              addressIndia: normalizedRow.addressIndia || normalizedRow.address || '',
+              kmccMember: normalizedRow.kmccMember === true || normalizedRow.kmccMember === 'true' || normalizedRow.kmccMember === 'Yes' || normalizedRow.kmccMember === '1',
+              kmccMembershipNumber: normalizedRow.kmccMembershipNumber || '',
+              pratheekshaMember: normalizedRow.pratheekshaMember === true || normalizedRow.pratheekshaMember === 'true' || normalizedRow.pratheekshaMember === 'Yes' || normalizedRow.pratheekshaMember === '1',
+              pratheekshaMembershipNumber: normalizedRow.pratheekshaMembershipNumber || '',
+              recommendedBy: normalizedRow.recommendedBy || '',
+              photo: normalizedRow.photo || '',
+              emiratesId: normalizedRow.emiratesId || '',
+              status: 'approved' as const,
+              role: 'user' as const,
+              registrationDate: new Date().toISOString(),
+              registrationYear: new Date().getFullYear(),
+              paymentStatus: false,
+              benefitsUsed: [],
+              notifications: [{
+                id: Date.now().toString(),
+                title: 'Welcome!',
+                message: 'Your account has been imported and approved. Please complete your profile and submit payment.',
+                date: new Date().toISOString(),
+                read: false,
+                fromAdmin: 'System'
+              }],
+            };
+          });
 
           resolve(users);
         } catch (error) {
@@ -103,7 +178,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImportComplete }) => {
 
       toast({
         title: "Import Successful",
-        description: `Successfully imported ${users.length} users. All users are auto-approved.`,
+        description: `Successfully imported ${users.length} users. All users are auto-approved and can now complete their profiles.`,
       });
 
       setFile(null);
@@ -170,10 +245,18 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImportComplete }) => {
           {loading ? 'Importing...' : 'Import Users'}
         </Button>
 
-        <div className="text-xs text-gray-500 space-y-1">
-          <p><strong>Supported columns:</strong></p>
-          <p>Full Name, Mobile Number, WhatsApp, Email, Emirates ID, Emirate, Mandalam, Nominee, Relation, Address UAE, Address India, KMCC Member, Pratheeksha Member, Recommended By</p>
-          <p><strong>Note:</strong> All imported users will be automatically approved.</p>
+        <div className="text-xs text-gray-500 space-y-2">
+          <p><strong>Smart Column Detection:</strong></p>
+          <p>The system automatically detects and maps columns with flexible naming. Supported variations include:</p>
+          <ul className="list-disc list-inside text-xs space-y-1">
+            <li><strong>Name:</strong> "Full Name", "Name", "FullName"</li>
+            <li><strong>Phone:</strong> "Mobile Number", "Mobile", "Phone", "Phone Number"</li>
+            <li><strong>Email:</strong> "Email", "Email Address"</li>
+            <li><strong>Emirates ID:</strong> "Emirates ID", "EmiratesID", "ID"</li>
+            <li><strong>Address:</strong> "Address UAE", "UAE Address", "Address India", "India Address"</li>
+            <li><strong>Membership:</strong> "KMCC Member", "Pratheeksha Member" (accepts Yes/No, true/false, 1/0)</li>
+          </ul>
+          <p><strong>Note:</strong> All imported users are automatically approved and can complete their profiles and payment.</p>
         </div>
       </CardContent>
     </Card>

@@ -9,7 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Upload, Camera } from 'lucide-react';
 
 interface RegisterProps {
   onSwitchToLogin: () => void;
@@ -71,6 +71,7 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string>('');
   const { register } = useAuth();
   const { toast } = useToast();
 
@@ -79,7 +80,9 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
     if (file) {
       const reader = new FileReader();
       reader.onload = (event) => {
-        setFormData({ ...formData, photo: event.target?.result as string });
+        const photoData = event.target?.result as string;
+        setFormData({ ...formData, photo: photoData });
+        setPhotoPreview(photoData);
       };
       reader.readAsDataURL(file);
     }
@@ -113,7 +116,7 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
       if (success) {
         toast({
           title: "Registration Successful",
-          description: "Your account has been created and is pending approval.",
+          description: "Your account has been created and is pending approval. You can upload your profile photo and prepare for payment.",
         });
         onSwitchToLogin();
       } else {
@@ -285,15 +288,34 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
               required
             />
 
-            <div>
-              <Label htmlFor="photo">Upload Photo</Label>
-              <Input
-                id="photo"
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="mt-1"
-              />
+            <div className="space-y-2">
+              <Label htmlFor="photo">Profile Photo</Label>
+              <div className="flex items-center gap-4">
+                <Input
+                  id="photo"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="photo"
+                  className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  <Camera className="h-4 w-4 mr-2" />
+                  Choose Photo
+                </label>
+                {photoPreview && (
+                  <div className="flex items-center gap-2">
+                    <img 
+                      src={photoPreview} 
+                      alt="Preview" 
+                      className="h-12 w-12 rounded-full object-cover border-2 border-gray-200"
+                    />
+                    <span className="text-sm text-green-600">Photo uploaded</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="relative">
