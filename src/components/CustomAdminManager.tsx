@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { User } from '../types/user';
 import { Button } from '@/components/ui/button';
@@ -14,6 +13,8 @@ interface CustomAdminManagerProps {
   onUpdateUser: (user: User) => void;
 }
 
+type MandalamType = 'BALUSHERI' | 'KUNNAMANGALAM' | 'KODUVALLI' | 'NADAPURAM' | 'KOYLANDI' | 'VADAKARA' | 'BEPUR' | 'KUTTIYADI';
+
 const CustomAdminManager: React.FC<CustomAdminManagerProps> = ({ users, onUpdateUser }) => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [permissions, setPermissions] = useState({
@@ -23,7 +24,7 @@ const CustomAdminManager: React.FC<CustomAdminManagerProps> = ({ users, onUpdate
     canManagePayments: false,
     canManageBenefits: false,
     canSendNotifications: false,
-    mandalamAccess: [] as string[]
+    mandalamAccess: [] as MandalamType[]
   });
   const { toast } = useToast();
 
@@ -45,7 +46,10 @@ const CustomAdminManager: React.FC<CustomAdminManagerProps> = ({ users, onUpdate
     const updatedUser = {
       ...selectedUser,
       role: 'custom_admin' as const,
-      customPermissions: permissions
+      customPermissions: {
+        ...permissions,
+        mandalamAccess: permissions.mandalamAccess
+      }
     };
 
     onUpdateUser(updatedUser);
@@ -109,7 +113,7 @@ const CustomAdminManager: React.FC<CustomAdminManagerProps> = ({ users, onUpdate
     }
   };
 
-  const handleMandalamToggle = (mandalam: string) => {
+  const handleMandalamToggle = (mandalam: MandalamType) => {
     setPermissions(prev => ({
       ...prev,
       mandalamAccess: prev.mandalamAccess.includes(mandalam)
@@ -214,7 +218,15 @@ const CustomAdminManager: React.FC<CustomAdminManagerProps> = ({ users, onUpdate
                             onClick={() => {
                               setSelectedUser(user);
                               if (user.customPermissions) {
-                                setPermissions(user.customPermissions);
+                                setPermissions({
+                                  canViewUsers: user.customPermissions.canViewUsers,
+                                  canEditUsers: user.customPermissions.canEditUsers,
+                                  canApproveUsers: user.customPermissions.canApproveUsers,
+                                  canManagePayments: user.customPermissions.canManagePayments,
+                                  canManageBenefits: user.customPermissions.canManageBenefits,
+                                  canSendNotifications: user.customPermissions.canSendNotifications,
+                                  mandalamAccess: user.customPermissions.mandalamAccess || []
+                                });
                               } else {
                                 resetPermissions();
                               }
@@ -299,7 +311,7 @@ const CustomAdminManager: React.FC<CustomAdminManagerProps> = ({ users, onUpdate
                             <div>
                               <p className="text-sm font-medium mb-2">Mandalam Access:</p>
                               <div className="grid grid-cols-2 gap-2">
-                                {['BALUSHERI', 'KUNNAMANGALAM', 'KODUVALLI', 'NADAPURAM', 'KOYLANDI', 'VADAKARA', 'BEPUR', 'KUTTIYADI'].map(mandalam => (
+                                {(['BALUSHERI', 'KUNNAMANGALAM', 'KODUVALLI', 'NADAPURAM', 'KOYLANDI', 'VADAKARA', 'BEPUR', 'KUTTIYADI'] as MandalamType[]).map(mandalam => (
                                   <div key={mandalam} className="flex items-center space-x-2">
                                     <Checkbox
                                       checked={permissions.mandalamAccess.includes(mandalam)}

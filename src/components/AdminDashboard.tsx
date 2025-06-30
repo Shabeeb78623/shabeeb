@@ -166,6 +166,37 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const approveUser = (userId: string) => {
+    if (!hasPermission('canApproveUsers')) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to approve users.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const user = users.find(u => u.id === userId);
+    if (user) {
+      confirmAndExecute(
+        () => {
+          const updatedUser = { 
+            ...user, 
+            status: 'approved' as const,
+            approvalDate: new Date().toISOString()
+          };
+          updateUser(updatedUser);
+          toast({
+            title: "User Approved",
+            description: `${user.fullName} has been approved.`,
+          });
+        },
+        "Approve User",
+        `Are you sure you want to approve ${user.fullName}?`
+      );
+    }
+  };
+
   const approvePaymentSubmission = (userId: string, remarks: string = '') => {
     if (!hasPermission('canManagePayments')) {
       toast({
