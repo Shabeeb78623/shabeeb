@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { User } from '../types/user';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -5,13 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Users, UserCheck, UserX, Clock, DollarSign, Gift, MessageSquare, Shield, Calendar } from 'lucide-react';
+import { Users, UserCheck, UserX, Clock, DollarSign, Gift, MessageSquare, Shield } from 'lucide-react';
 import UsersDataTable from './UsersDataTable';
 import EnhancedPaymentManager from './EnhancedPaymentManager';
 import EnhancedBenefitManager from './EnhancedBenefitManager';
 import EnhancedMessageManager from './EnhancedMessageManager';
 import CustomAdminManager from './CustomAdminManager';
-import NewYearManager from './NewYearManager';
 import CSVImport from './CSVImport';
 
 interface AdminDashboardProps {
@@ -92,14 +92,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       title: "Import Complete",
       description: `${importedUsers.length} users have been imported and added to the system.`,
     });
-  };
-
-  const handleNewYear = (year: number) => {
-    if (setActiveYear) {
-      setActiveYear(year);
-    }
-    // Additional logic for handling new year creation
-    console.log(`New year ${year} has been created`);
   };
 
   const isMasterAdmin = effectiveCurrentUser?.role === 'master_admin';
@@ -190,10 +182,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="flex items-center gap-1">
-            <Calendar className="h-3 w-3" />
-            Year: {activeYear}
-          </Badge>
           <Badge variant="secondary" className="flex items-center gap-1">
             <Shield className="h-3 w-3" />
             {effectiveCurrentUser.role.replace('_', ' ').toUpperCase()}
@@ -202,7 +190,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-8">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="import">Import</TabsTrigger>
@@ -210,7 +198,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <TabsTrigger value="benefits">Benefits</TabsTrigger>
           <TabsTrigger value="messages">Messages</TabsTrigger>
           <TabsTrigger value="admins">Admins</TabsTrigger>
-          <TabsTrigger value="year">New Year</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -257,15 +244,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <CustomAdminManager 
             users={effectiveUsers} 
             onUpdateUser={handleUpdateUser}
-          />
-        </TabsContent>
-
-        <TabsContent value="year">
-          <NewYearManager 
-            users={effectiveUsers} 
-            onUpdateUsers={handleUpdateUsers}
-            onNewYear={handleNewYear}
-            currentUser={effectiveCurrentUser}
           />
         </TabsContent>
       </Tabs>
