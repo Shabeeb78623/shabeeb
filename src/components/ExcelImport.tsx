@@ -29,7 +29,6 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImportComplete }) => {
   const mapColumnToField = (columnName: string): string => {
     const normalizedColumn = columnName.toLowerCase().trim();
     
-    // Create a mapping for various possible column names
     const columnMappings: { [key: string]: string } = {
       'full name': 'fullName',
       'name': 'fullName',
@@ -73,13 +72,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImportComplete }) => {
       'pratheeksha number': 'pratheekshaMembershipNumber',
       'recommended by': 'recommendedBy',
       'recommended': 'recommendedBy',
-      'referrer': 'recommendedBy',
-      'photo': 'photo',
-      'image': 'photo',
-      'registration number': 'regNo',
-      'reg no': 'regNo',
-      'regno': 'regNo',
-      'registration no': 'regNo'
+      'referrer': 'recommendedBy'
     };
 
     return columnMappings[normalizedColumn] || normalizedColumn;
@@ -97,19 +90,21 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImportComplete }) => {
           const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
           const users: User[] = jsonData.map((row: any, index: number) => {
-            // Create a normalized row object
             const normalizedRow: any = {};
             Object.keys(row).forEach(key => {
               const mappedField = mapColumnToField(key);
               normalizedRow[mappedField] = row[key];
             });
 
+            const mobileNo = normalizedRow.mobileNo || normalizedRow.mobile || normalizedRow.phone || '';
+            const emiratesId = normalizedRow.emiratesId || '';
+
             return {
               id: `imported_${Date.now()}_${index}`,
               regNo: normalizedRow.regNo || `REG${Date.now()}${index}`,
               fullName: normalizedRow.fullName || normalizedRow.name || '',
-              mobileNo: normalizedRow.mobileNo || normalizedRow.mobile || normalizedRow.phone || '',
-              whatsApp: normalizedRow.whatsApp || normalizedRow.mobileNo || normalizedRow.mobile || normalizedRow.phone || '',
+              mobileNo: mobileNo,
+              whatsApp: normalizedRow.whatsApp || mobileNo,
               nominee: normalizedRow.nominee || '',
               relation: normalizedRow.relation || 'Father',
               emirate: normalizedRow.emirate || '',
@@ -122,8 +117,8 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImportComplete }) => {
               pratheekshaMember: normalizedRow.pratheekshaMember === true || normalizedRow.pratheekshaMember === 'true' || normalizedRow.pratheekshaMember === 'Yes' || normalizedRow.pratheekshaMember === '1',
               pratheekshaMembershipNumber: normalizedRow.pratheekshaMembershipNumber || '',
               recommendedBy: normalizedRow.recommendedBy || '',
-              photo: normalizedRow.photo || '',
-              emiratesId: normalizedRow.emiratesId || '',
+              photo: '',
+              emiratesId: emiratesId,
               status: 'approved' as const,
               role: 'user' as const,
               registrationDate: new Date().toISOString(),
@@ -132,11 +127,11 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImportComplete }) => {
               benefitsUsed: [],
               notifications: [{
                 id: Date.now().toString(),
-                title: 'Welcome!',
-                message: 'Your account has been imported and approved. Please complete your profile and submit payment.',
+                title: 'Account Created!',
+                message: `Welcome ${normalizedRow.fullName || 'User'}! Your account has been created automatically. Username: ${mobileNo}, Password: ${emiratesId}. Please login and complete your profile.`,
                 date: new Date().toISOString(),
                 read: false,
-                fromAdmin: 'System'
+                fromAdmin: 'System Import'
               }],
             };
           });
@@ -164,7 +159,6 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImportComplete }) => {
     setProgress(0);
 
     try {
-      // Simulate progress
       const progressInterval = setInterval(() => {
         setProgress(prev => Math.min(prev + 10, 90));
       }, 200);
@@ -178,7 +172,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImportComplete }) => {
 
       toast({
         title: "Import Successful",
-        description: `Successfully imported ${users.length} users. All users are auto-approved and can now complete their profiles.`,
+        description: `Successfully imported ${users.length} users with automatic account creation. Username: Phone Number, Password: Emirates ID`,
       });
 
       setFile(null);
@@ -199,7 +193,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImportComplete }) => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <FileSpreadsheet className="h-5 w-5" />
-          Excel Import
+          Excel Import - Auto Account Creation
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -232,7 +226,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImportComplete }) => {
           <div className="space-y-2">
             <Progress value={progress} className="w-full" />
             <p className="text-sm text-gray-600 text-center">
-              Processing... {progress}%
+              Creating accounts... {progress}%
             </p>
           </div>
         )}
@@ -242,21 +236,15 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImportComplete }) => {
           disabled={!file || loading}
           className="w-full"
         >
-          {loading ? 'Importing...' : 'Import Users'}
+          {loading ? 'Creating Accounts...' : 'Import & Create Accounts'}
         </Button>
 
         <div className="text-xs text-gray-500 space-y-2">
-          <p><strong>Smart Column Detection:</strong></p>
-          <p>The system automatically detects and maps columns with flexible naming. Supported variations include:</p>
-          <ul className="list-disc list-inside text-xs space-y-1">
-            <li><strong>Name:</strong> "Full Name", "Name", "FullName"</li>
-            <li><strong>Phone:</strong> "Mobile Number", "Mobile", "Phone", "Phone Number"</li>
-            <li><strong>Email:</strong> "Email", "Email Address"</li>
-            <li><strong>Emirates ID:</strong> "Emirates ID", "EmiratesID", "ID"</li>
-            <li><strong>Address:</strong> "Address UAE", "UAE Address", "Address India", "India Address"</li>
-            <li><strong>Membership:</strong> "KMCC Member", "Pratheeksha Member" (accepts Yes/No, true/false, 1/0)</li>
-          </ul>
-          <p><strong>Note:</strong> All imported users are automatically approved and can complete their profiles and payment.</p>
+          <p><strong>Automatic Account Creation:</strong></p>
+          <p>• Username: Phone Number from Excel</p>
+          <p>• Password: Emirates ID from Excel</p>
+          <p>• All users are auto-approved</p>
+          <p>• Users get welcome notification with login details</p>
         </div>
       </CardContent>
     </Card>

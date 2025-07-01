@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { User } from '../types/user';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { Search } from 'lucide-react';
 
 interface CustomAdminManagerProps {
   users: User[];
@@ -17,6 +19,7 @@ type MandalamType = 'BALUSHERI' | 'KUNNAMANGALAM' | 'KODUVALLI' | 'NADAPURAM' | 
 
 const CustomAdminManager: React.FC<CustomAdminManagerProps> = ({ users, onUpdateUser }) => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const [permissions, setPermissions] = useState({
     canViewUsers: false,
     canEditUsers: false,
@@ -39,6 +42,15 @@ const CustomAdminManager: React.FC<CustomAdminManagerProps> = ({ users, onUpdate
       mandalamAccess: []
     });
   };
+
+  const filteredUsers = users.filter(user => 
+    user.status === 'approved' && (
+      user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.mobileNo.includes(searchTerm) ||
+      user.mandalam.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  );
 
   const assignCustomAdmin = () => {
     if (!selectedUser) return;
@@ -126,10 +138,19 @@ const CustomAdminManager: React.FC<CustomAdminManagerProps> = ({ users, onUpdate
     <Card>
       <CardHeader>
         <CardTitle>Admin Management</CardTitle>
+        <div className="relative">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Search users..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {users.filter(user => user.status === 'approved').map(user => (
+          {filteredUsers.map(user => (
             <div key={user.id} className="border rounded-lg p-4">
               <div className="flex justify-between items-start">
                 <div className="space-y-2">

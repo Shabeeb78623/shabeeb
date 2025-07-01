@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { User } from '../types/user';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,13 +10,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { Search, DollarSign, Users, TrendingUp } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 
-interface PaymentRecipient {
-  id: string;
-  name: string;
-  contact_info: string;
-}
+const paymentRecipients = [
+  { id: '1', name: 'John Doe', contact: '+971501234567' },
+  { id: '2', name: 'Sarah Ahmed', contact: '+971509876543' },
+  { id: '3', name: 'Mohammed Ali', contact: '+971501112233' },
+  { id: '4', name: 'Fatima Hassan', contact: '+971504445566' },
+];
 
 interface EnhancedPaymentManagerProps {
   users: User[];
@@ -27,28 +27,11 @@ const EnhancedPaymentManager: React.FC<EnhancedPaymentManagerProps> = ({ users, 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [mandalamFilter, setMandalamFilter] = useState('all');
+  const [paidToSearch, setPaidToSearch] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [paymentRecipients, setPaymentRecipients] = useState<PaymentRecipient[]>([]);
   const [selectedRecipient, setSelectedRecipient] = useState('');
   const [paidAmount, setPaidAmount] = useState('');
   const { toast } = useToast();
-
-  useEffect(() => {
-    fetchPaymentRecipients();
-  }, []);
-
-  const fetchPaymentRecipients = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('payment_recipients')
-        .select('*');
-
-      if (error) throw error;
-      setPaymentRecipients(data || []);
-    } catch (error) {
-      console.error('Error fetching payment recipients:', error);
-    }
-  };
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
@@ -62,7 +45,10 @@ const EnhancedPaymentManager: React.FC<EnhancedPaymentManagerProps> = ({ users, 
     
     const matchesMandalam = mandalamFilter === 'all' || user.mandalam === mandalamFilter;
     
-    return matchesSearch && matchesStatus && matchesMandalam;
+    const matchesPaidTo = paidToSearch === '' || 
+      (user.paymentRemarks && user.paymentRemarks.toLowerCase().includes(paidToSearch.toLowerCase()));
+    
+    return matchesSearch && matchesStatus && matchesMandalam && matchesPaidTo;
   });
 
   const handleMarkAsPaid = (recipientName: string, amount: number) => {
@@ -72,7 +58,7 @@ const EnhancedPaymentManager: React.FC<EnhancedPaymentManagerProps> = ({ users, 
       ...selectedUser,
       paymentStatus: true,
       paymentAmount: amount,
-      paymentRemarks: `Paid to: ${recipientName}`,
+      paymentRemarks: recipientName,
     };
 
     onUpdateUser(updatedUser);
@@ -92,11 +78,12 @@ const EnhancedPaymentManager: React.FC<EnhancedPaymentManagerProps> = ({ users, 
   // Calculate recipient-wise payment summary
   const recipientSummary = paymentRecipients.map(recipient => {
     const paymentsToRecipient = users.filter(u => 
-      u.paymentStatus && u.paymentRemarks?.includes(`Paid to: ${recipient.name}`)
+      u.paymentStatus && u.paymentRemarks === recipient.name
     );
     const totalAmount = paymentsToRecipient.reduce((sum, u) => sum + (u.paymentAmount || 0), 0);
     return {
       name: recipient.name,
+      contact: recipient.contact,
       count: paymentsToRecipient.length,
       total: totalAmount
     };
@@ -106,48 +93,55 @@ const EnhancedPaymentManager: React.FC<EnhancedPaymentManagerProps> = ({ users, 
     <Card>
       <CardHeader>
         <CardTitle className="flex justify-between items-center">
-          Enhanced Payment Management
-          <div className="flex gap-2">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="outline">
-                  <TrendingUp className="h-4 w-4 mr-2" />
-                  Payment Summary
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Payment Summary by Recipient</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  {recipientSummary.map((summary) => (
-                    <div key={summary.name} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                      <div>
-                        <p className="font-semibold">{summary.name}</p>
-                        <p className="text-sm text-gray-600">{summary.count} payments</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-green-600">AED {summary.total}</p>
-                      </div>
+          Payment Management
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <TrendingUp className="h-4 w-4 mr-2" />
+                Payment Summary
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Payment Summary by Recipient</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                {recipientSummary.map((summary) => (
+                  <div key={summary.name} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-semibold">{summary.name}</p>
+                      <p className="text-sm text-gray-600">{summary.contact}</p>
+                      <p className="text-sm text-gray-600">{summary.count} payments</p>
                     </div>
-                  ))}
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-green-600">AED {summary.total}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </DialogContent>
+          </Dialog>
         </CardTitle>
-        <div className="flex gap-4 mt-4">
-          <div className="relative flex-1">
+        
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+          <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="Search by name, reg no, or phone..."
+              placeholder="Search users..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
             />
           </div>
+          
+          <Input
+            placeholder="Search 'Paid To'..."
+            value={paidToSearch}
+            onChange={(e) => setPaidToSearch(e.target.value)}
+          />
+          
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger>
               <SelectValue placeholder="Payment Status" />
             </SelectTrigger>
             <SelectContent>
@@ -156,8 +150,9 @@ const EnhancedPaymentManager: React.FC<EnhancedPaymentManagerProps> = ({ users, 
               <SelectItem value="unpaid">Unpaid</SelectItem>
             </SelectContent>
           </Select>
+          
           <Select value={mandalamFilter} onValueChange={setMandalamFilter}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger>
               <SelectValue placeholder="Mandalam" />
             </SelectTrigger>
             <SelectContent>
@@ -174,6 +169,7 @@ const EnhancedPaymentManager: React.FC<EnhancedPaymentManagerProps> = ({ users, 
           </Select>
         </div>
       </CardHeader>
+      
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="bg-green-50 p-4 rounded-lg">
@@ -235,7 +231,7 @@ const EnhancedPaymentManager: React.FC<EnhancedPaymentManagerProps> = ({ users, 
                     {user.paymentAmount ? `AED ${user.paymentAmount}` : '-'}
                   </TableCell>
                   <TableCell>
-                    {user.paymentRemarks?.replace('Paid to: ', '') || '-'}
+                    {user.paymentRemarks || '-'}
                   </TableCell>
                   <TableCell>
                     {!user.paymentStatus && (
