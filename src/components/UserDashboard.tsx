@@ -503,7 +503,7 @@ const UserDashboard: React.FC = () => {
             </TabsContent>
 
             <TabsContent value="admin">
-              <AdminDashboard currentUser={currentUser} />
+              <AdminDashboard />
             </TabsContent>
           </Tabs>
         </main>

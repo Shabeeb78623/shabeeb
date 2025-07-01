@@ -12,7 +12,7 @@ const Index = () => {
 
   // Show admin dashboard if user is master admin
   if (isMasterAdmin) {
-    return <AdminDashboard currentUser={currentUser} />;
+    return <AdminDashboard />;
   }
 
   // Show user dashboard if user is logged in (includes assigned admins)
