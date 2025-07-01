@@ -15,48 +15,88 @@ import NewYearManager from './NewYearManager';
 import CSVImport from './CSVImport';
 
 interface AdminDashboardProps {
-  users: User[];
-  onUpdateUser: (user: User) => void;
-  onDeleteUser: (userId: string) => void;
-  onUpdateUsers: (users: User[]) => void;
-  currentUser: User;
-  activeYear: number;
-  setActiveYear: (year: number) => void;
+  users?: User[];
+  onUpdateUser?: (user: User) => void;
+  onDeleteUser?: (userId: string) => void;
+  onUpdateUsers?: (users: User[]) => void;
+  currentUser?: User;
+  activeYear?: number;
+  setActiveYear?: (year: number) => void;
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({
-  users,
-  onUpdateUser,
-  onDeleteUser,
-  onUpdateUsers,
+  users = [],
+  onUpdateUser = () => {},
+  onDeleteUser = () => {},
+  onUpdateUsers = () => {},
   currentUser,
-  activeYear,
-  setActiveYear
+  activeYear = new Date().getFullYear(),
+  setActiveYear = () => {}
 }) => {
   const [activeTab, setActiveTab] = useState('overview');
+  const [localUsers, setLocalUsers] = useState<User[]>([]);
+  const [localCurrentUser, setLocalCurrentUser] = useState<User | null>(null);
   const { toast } = useToast();
 
+  useEffect(() => {
+    // Initialize from localStorage if props are not provided
+    if (users.length === 0) {
+      const storedUsers = localStorage.getItem('users');
+      if (storedUsers) {
+        setLocalUsers(JSON.parse(storedUsers));
+      }
+    } else {
+      setLocalUsers(users);
+    }
+
+    if (!currentUser) {
+      const storedCurrentUser = localStorage.getItem('currentUser');
+      if (storedCurrentUser) {
+        setLocalCurrentUser(JSON.parse(storedCurrentUser));
+      }
+    } else {
+      setLocalCurrentUser(currentUser);
+    }
+  }, [users, currentUser]);
+
+  const effectiveUsers = users.length > 0 ? users : localUsers;
+  const effectiveCurrentUser = currentUser || localCurrentUser;
+
   const handleUpdateUser = (updatedUser: User) => {
+    const updatedUsers = effectiveUsers.map(user => 
+      user.id === updatedUser.id ? updatedUser : user
+    );
+    setLocalUsers(updatedUsers);
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
     onUpdateUser(updatedUser);
   };
 
   const handleDeleteUser = (userId: string) => {
+    const updatedUsers = effectiveUsers.filter(user => user.id !== userId);
+    setLocalUsers(updatedUsers);
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
     onDeleteUser(userId);
   };
 
   const handleUpdateUsers = (updatedUsers: User[]) => {
+    setLocalUsers(updatedUsers);
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
     onUpdateUsers(updatedUsers);
   };
 
   const handleImportComplete = (importedUsers: User[]) => {
-    const updatedUsers = [...users, ...importedUsers];
-    onUpdateUsers(updatedUsers);
+    const updatedUsers = [...effectiveUsers, ...importedUsers];
+    handleUpdateUsers(updatedUsers);
     
     toast({
       title: "Import Complete",
       description: `${importedUsers.length} users have been imported and added to the system.`,
     });
   };
+
+  const isMasterAdmin = effectiveCurrentUser?.role === 'master_admin';
+  const userRole = effectiveCurrentUser?.role || 'user';
+  const userMandalam = effectiveCurrentUser?.mandalamAccess || effectiveCurrentUser?.mandalam;
 
   const UsersOverview = ({ users }: { users: User[] }) => {
     const totalUsers = users.length;
@@ -133,6 +173,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     );
   };
 
+  if (!effectiveCurrentUser) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
@@ -144,7 +188,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </Badge>
           <Badge variant="secondary" className="flex items-center gap-1">
             <Shield className="h-3 w-3" />
-            {currentUser.role.replace('_', ' ').toUpperCase()}
+            {effectiveCurrentUser.role.replace('_', ' ').toUpperCase()}
           </Badge>
         </div>
       </div>
@@ -162,14 +206,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </TabsList>
 
         <TabsContent value="overview">
-          <UsersOverview users={users} />
+          <UsersOverview users={effectiveUsers} />
         </TabsContent>
 
         <TabsContent value="users">
           <UsersDataTable 
-            users={users} 
+            users={effectiveUsers} 
             onUpdateUser={handleUpdateUser}
             onDeleteUser={handleDeleteUser}
+            isMasterAdmin={isMasterAdmin}
+            userRole={userRole}
+            userMandalam={userMandalam}
           />
         </TabsContent>
 
@@ -179,40 +226,36 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         <TabsContent value="payment">
           <EnhancedPaymentManager 
-            users={users} 
+            users={effectiveUsers} 
             onUpdateUser={handleUpdateUser}
           />
         </TabsContent>
 
         <TabsContent value="benefits">
           <EnhancedBenefitManager 
-            users={users} 
+            users={effectiveUsers} 
             onUpdateUser={handleUpdateUser}
           />
         </TabsContent>
 
         <TabsContent value="messages">
           <EnhancedMessageManager 
-            users={users} 
-            onUpdateUser={handleUpdateUser}
-            currentUser={currentUser}
+            users={effectiveUsers} 
+            currentUser={effectiveCurrentUser}
           />
         </TabsContent>
 
         <TabsContent value="admins">
           <CustomAdminManager 
-            users={users} 
+            users={effectiveUsers} 
             onUpdateUser={handleUpdateUser}
-            onDeleteUser={handleDeleteUser}
           />
         </TabsContent>
 
         <TabsContent value="year">
           <NewYearManager 
-            users={users} 
+            users={effectiveUsers} 
             onUpdateUsers={handleUpdateUsers}
-            activeYear={activeYear}
-            setActiveYear={setActiveYear}
           />
         </TabsContent>
       </Tabs>
