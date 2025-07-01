@@ -94,6 +94,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     });
   };
 
+  const handleNewYear = (year: number) => {
+    if (setActiveYear) {
+      setActiveYear(year);
+    }
+    // Additional logic for handling new year creation
+    console.log(`New year ${year} has been created`);
+  };
+
   const isMasterAdmin = effectiveCurrentUser?.role === 'master_admin';
   const userRole = effectiveCurrentUser?.role || 'user';
   const userMandalam = effectiveCurrentUser?.mandalamAccess || effectiveCurrentUser?.mandalam;
@@ -256,6 +264,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <NewYearManager 
             users={effectiveUsers} 
             onUpdateUsers={handleUpdateUsers}
+            onNewYear={handleNewYear}
+            currentUser={effectiveCurrentUser}
           />
         </TabsContent>
       </Tabs>
