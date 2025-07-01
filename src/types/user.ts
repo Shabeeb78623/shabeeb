@@ -36,6 +36,7 @@ export interface User {
   isReregistration?: boolean;
   originalUserId?: string;
   approvalDate?: string;
+  approvedBy?: string; // Track which admin approved the user
   paymentStatus: boolean;
   paymentAmount?: number;
   paymentRemarks?: string;
@@ -51,6 +52,9 @@ export interface User {
   notifications: Notification[];
   passwordResetToken?: string;
   passwordResetExpiry?: string;
+  showReregistrationPopup?: boolean; // Show popup for re-registration
+  username?: string; // Phone number as username
+  password?: string; // Emirates ID as password
 }
 
 export interface Notification {

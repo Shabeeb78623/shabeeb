@@ -10,7 +10,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { Calendar, Plus, Trash2, Users, AlertTriangle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 
 interface YearConfig {
   id: string;
@@ -24,76 +23,70 @@ interface NewYearManagerProps {
   users: User[];
   onNewYear: (year: number) => void;
   onUpdateUsers: (users: User[]) => void;
+  currentUser: User;
 }
 
-const NewYearManager: React.FC<NewYearManagerProps> = ({ users, onNewYear, onUpdateUsers }) => {
+const NewYearManager: React.FC<NewYearManagerProps> = ({ users, onNewYear, onUpdateUsers, currentUser }) => {
   const [yearConfigs, setYearConfigs] = useState<YearConfig[]>([]);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear() + 1);
   const [registrationFee, setRegistrationFee] = useState<number>(0);
   const [loading, setLoading] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchYearConfigs();
   }, []);
 
-  const fetchYearConfigs = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('year_configs')
-        .select('*')
-        .order('year', { ascending: false });
-
-      if (error) throw error;
-      setYearConfigs(data || []);
-    } catch (error) {
-      console.error('Error fetching year configs:', error);
-    }
+  const fetchYearConfigs = () => {
+    // Load from localStorage for now
+    const configs = JSON.parse(localStorage.getItem('yearConfigs') || '[]');
+    setYearConfigs(configs);
   };
 
   const handleCreateNewYear = async () => {
     setLoading(true);
     try {
       // Deactivate all existing years
-      await supabase
-        .from('year_configs')
-        .update({ is_active: false })
-        .neq('id', '');
-
+      const updatedConfigs = yearConfigs.map(config => ({ ...config, is_active: false }));
+      
       // Create new year config
-      const { error } = await supabase
-        .from('year_configs')
-        .insert([{
-          year: selectedYear,
-          is_active: true,
-          registration_fee: registrationFee,
-        }]);
+      const newConfig: YearConfig = {
+        id: Date.now().toString(),
+        year: selectedYear,
+        is_active: true,
+        registration_fee: registrationFee,
+        created_at: new Date().toISOString(),
+      };
 
-      if (error) throw error;
+      const allConfigs = [...updatedConfigs, newConfig];
+      localStorage.setItem('yearConfigs', JSON.stringify(allConfigs));
 
       // Notify all users about new year registration
       const updatedUsers = users.map(user => ({
         ...user,
+        showReregistrationPopup: true,
         notifications: [
           ...user.notifications,
           {
             id: Date.now().toString() + Math.random(),
-            title: 'New Year Registration Open',
-            message: `Registration for ${selectedYear} is now open. Please re-register to continue your membership.`,
+            title: 'New Year Registration Required',
+            message: `Registration for ${selectedYear} is now open. You must re-register to continue your membership. Registration fee: AED ${registrationFee}`,
             date: new Date().toISOString(),
             read: false,
-            fromAdmin: 'System',
+            fromAdmin: currentUser.fullName,
           }
         ]
       }));
 
       onUpdateUsers(updatedUsers);
       onNewYear(selectedYear);
-      await fetchYearConfigs();
+      setYearConfigs(allConfigs);
+      setShowConfirmDialog(false);
 
       toast({
         title: "New Year Created",
-        description: `Registration for ${selectedYear} is now active. All users have been notified.`,
+        description: `Registration for ${selectedYear} is now active. All ${users.length} users have been notified.`,
       });
     } catch (error) {
       toast({
@@ -106,28 +99,15 @@ const NewYearManager: React.FC<NewYearManagerProps> = ({ users, onNewYear, onUpd
     }
   };
 
-  const handleDeleteYear = async (yearId: string, year: number) => {
-    try {
-      const { error } = await supabase
-        .from('year_configs')
-        .delete()
-        .eq('id', yearId);
+  const handleDeleteYear = (yearId: string, year: number) => {
+    const updatedConfigs = yearConfigs.filter(config => config.id !== yearId);
+    localStorage.setItem('yearConfigs', JSON.stringify(updatedConfigs));
+    setYearConfigs(updatedConfigs);
 
-      if (error) throw error;
-
-      await fetchYearConfigs();
-
-      toast({
-        title: "Year Deleted",
-        description: `Year ${year} configuration has been deleted.`,
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete year configuration",
-        variant: "destructive"
-      });
-    }
+    toast({
+      title: "Year Deleted",
+      description: `Year ${year} configuration has been deleted.`,
+    });
   };
 
   const activeYear = yearConfigs.find(config => config.is_active);
@@ -204,7 +184,7 @@ const NewYearManager: React.FC<NewYearManagerProps> = ({ users, onNewYear, onUpd
                     </div>
                   </div>
                 </div>
-                <AlertDialog>
+                <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
                   <AlertDialogTrigger asChild>
                     <Button className="w-full" disabled={loading}>
                       {loading ? 'Creating...' : 'Create New Year'}
@@ -215,13 +195,15 @@ const NewYearManager: React.FC<NewYearManagerProps> = ({ users, onNewYear, onUpd
                       <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                       <AlertDialogDescription>
                         This will create a new registration year ({selectedYear}) and notify all {totalUsers} users. 
-                        The current year will be deactivated. All users will need to re-register.
+                        The current year will be deactivated. All users will need to re-register and will receive a notification with a popup to re-register.
+                        <br /><br />
+                        <strong>This action cannot be undone!</strong>
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction onClick={handleCreateNewYear}>
-                        Yes, Create New Year
+                        Yes, Create New Year & Notify All Users
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -273,16 +255,16 @@ const NewYearManager: React.FC<NewYearManagerProps> = ({ users, onNewYear, onUpd
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Year Configuration</AlertDialogTitle>
+                              <AlertDialogTitle>Are you sure you want to delete this year?</AlertDialogTitle>
                               <AlertDialogDescription>
                                 Are you sure you want to delete the year {config.year} configuration? 
-                                This action cannot be undone.
+                                This action cannot be undone and will permanently remove all data for this year.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
                               <AlertDialogAction onClick={() => handleDeleteYear(config.id, config.year)}>
-                                Delete
+                                Yes, Delete Year
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>

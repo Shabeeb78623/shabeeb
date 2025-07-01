@@ -15,6 +15,7 @@ interface UserNotificationsProps {
 
 const UserNotifications: React.FC<UserNotificationsProps> = ({ user, onUpdateUser }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedNotification, setSelectedNotification] = useState<string | null>(null);
 
   const filteredNotifications = user.notifications.filter(notification =>
     notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -42,94 +43,104 @@ const UserNotifications: React.FC<UserNotificationsProps> = ({ user, onUpdateUse
     onUpdateUser(updatedUser);
   };
 
+  const handleOpenMessage = (notificationId: string) => {
+    setSelectedNotification(notificationId);
+    if (!user.notifications.find(n => n.id === notificationId)?.read) {
+      markAsRead(notificationId);
+    }
+  };
+
   const unreadCount = user.notifications.filter(n => !n.read).length;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            Messages & Notifications
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Bell className="h-5 w-5" />
+              Messages & Notifications
+              {unreadCount > 0 && (
+                <Badge variant="destructive">{unreadCount} unread</Badge>
+              )}
+            </div>
             {unreadCount > 0 && (
-              <Badge variant="destructive">{unreadCount} unread</Badge>
+              <Button onClick={markAllAsRead} variant="outline" size="sm">
+                Mark All Read
+              </Button>
             )}
+          </CardTitle>
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search messages..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
           </div>
-          {unreadCount > 0 && (
-            <Button onClick={markAllAsRead} variant="outline" size="sm">
-              Mark All Read
-            </Button>
-          )}
-        </CardTitle>
-        <div className="relative">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Search messages..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
-          {filteredNotifications.map((notification) => (
-            <div
-              key={notification.id}
-              className={`border rounded-lg p-4 ${!notification.read ? 'border-blue-300 bg-blue-50' : 'border-gray-200'}`}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h4 className="font-semibold">{notification.title}</h4>
-                    {!notification.read && <Badge variant="destructive" className="text-xs">New</Badge>}
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {filteredNotifications.map((notification) => (
+              <div
+                key={notification.id}
+                className={`border rounded-lg p-4 cursor-pointer hover:bg-gray-50 ${!notification.read ? 'border-blue-300 bg-blue-50' : 'border-gray-200'}`}
+                onClick={() => handleOpenMessage(notification.id)}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h4 className="font-semibold">{notification.title}</h4>
+                      {!notification.read && <Badge variant="destructive" className="text-xs">New</Badge>}
+                    </div>
+                    <p className="text-gray-600 text-sm mb-2 line-clamp-2">{notification.message}</p>
+                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                      <span>From: {notification.fromAdmin}</span>
+                      <span>{new Date(notification.date).toLocaleDateString()}</span>
+                    </div>
                   </div>
-                  <p className="text-gray-600 text-sm mb-2 line-clamp-2">{notification.message}</p>
-                  <div className="flex items-center gap-4 text-xs text-gray-500">
-                    <span>From: {notification.fromAdmin}</span>
-                    <span>{new Date(notification.date).toLocaleDateString()}</span>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => !notification.read && markAsRead(notification.id)}
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        Open
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl">
-                      <DialogHeader>
-                        <DialogTitle>{notification.title}</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <div className="bg-gray-50 p-4 rounded-lg">
-                          <p className="whitespace-pre-wrap">{notification.message}</p>
-                        </div>
-                        <div className="flex justify-between text-sm text-gray-500">
-                          <span>From: {notification.fromAdmin}</span>
-                          <span>{new Date(notification.date).toLocaleString()}</span>
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+                  <Button variant="outline" size="sm">
+                    <Eye className="h-4 w-4 mr-1" />
+                    Open
+                  </Button>
                 </div>
               </div>
+            ))}
+            
+            {filteredNotifications.length === 0 && (
+              <div className="text-center text-gray-500 py-8">
+                {searchTerm ? 'No messages match your search.' : 'No messages yet.'}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Message Dialog */}
+      {selectedNotification && (
+        <Dialog open={!!selectedNotification} onOpenChange={() => setSelectedNotification(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                {user.notifications.find(n => n.id === selectedNotification)?.title}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="whitespace-pre-wrap">
+                  {user.notifications.find(n => n.id === selectedNotification)?.message}
+                </p>
+              </div>
+              <div className="flex justify-between text-sm text-gray-500">
+                <span>From: {user.notifications.find(n => n.id === selectedNotification)?.fromAdmin}</span>
+                <span>{new Date(user.notifications.find(n => n.id === selectedNotification)?.date || '').toLocaleString()}</span>
+              </div>
             </div>
-          ))}
-          
-          {filteredNotifications.length === 0 && (
-            <div className="text-center text-gray-500 py-8">
-              {searchTerm ? 'No messages match your search.' : 'No messages yet.'}
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   );
 };
 
