@@ -149,6 +149,7 @@ const UsersOverview: React.FC<UsersOverviewProps> = ({ users }) => {
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Phone</TableHead>
+                <TableHead>Emirates ID</TableHead>
                 <TableHead>Mandalam</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Role</TableHead>
@@ -163,6 +164,7 @@ const UsersOverview: React.FC<UsersOverviewProps> = ({ users }) => {
                   <TableCell>{user.fullName}</TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>{user.mobileNo}</TableCell>
+                  <TableCell>{user.emiratesId}</TableCell>
                   <TableCell>{user.mandalam}</TableCell>
                   <TableCell>
                     <Badge className={

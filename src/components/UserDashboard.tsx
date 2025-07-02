@@ -8,8 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Bell, Eye, EyeOff } from 'lucide-react';
+import { Bell, Eye, EyeOff, Trash2, Maximize } from 'lucide-react';
 import AdminDashboard from './AdminDashboard';
+import UserProfileEditor from './UserProfileEditor';
 
 const UserDashboard: React.FC = () => {
   const { currentUser, isAdmin, logout, changePassword } = useAuth();
@@ -21,6 +22,7 @@ const UserDashboard: React.FC = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [expandedNotification, setExpandedNotification] = useState<string | null>(null);
   const { toast } = useToast();
 
   if (!currentUser) return null;
@@ -134,6 +136,47 @@ const UserDashboard: React.FC = () => {
     localStorage.setItem('currentUser', JSON.stringify(updatedUser));
   };
 
+  const deleteNotification = (notificationId: string) => {
+    const updatedUser = {
+      ...currentUser,
+      notifications: currentUser.notifications?.filter(notif => notif.id !== notificationId) || []
+    };
+    
+    // Update localStorage
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const updatedUsers = users.map((user: any) => 
+      user.id === currentUser.id ? updatedUser : user
+    );
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
+    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+    
+    // Update current user state
+    window.location.reload();
+  };
+
+  const updateUserProfile = (updatedUser: any) => {
+    // Update localStorage
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const updatedUsers = users.map((user: any) => 
+      user.id === currentUser.id ? updatedUser : user
+    );
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
+    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+    
+    // Update yearly data
+    const yearlyData = JSON.parse(localStorage.getItem('yearlyData') || '[]');
+    const updatedYearlyData = yearlyData.map((data: any) => ({
+      ...data,
+      users: data.users.map((user: any) => 
+        user.id === currentUser.id ? updatedUser : user
+      )
+    }));
+    localStorage.setItem('yearlyData', JSON.stringify(updatedYearlyData));
+    
+    // Refresh the page to show updated data
+    window.location.reload();
+  };
+
   const unreadNotifications = currentUser.notifications?.filter(n => !n.read).length || 0;
 
   const getStatusColor = (status: string) => {
@@ -199,20 +242,52 @@ const UserDashboard: React.FC = () => {
                           currentUser.notifications.map(notification => (
                             <div 
                               key={notification.id} 
-                              className={`p-3 border-b cursor-pointer hover:bg-gray-50 ${!notification.read ? 'bg-blue-50' : ''}`}
-                              onClick={() => markNotificationAsRead(notification.id)}
+                              className={`p-3 border-b hover:bg-gray-50 ${!notification.read ? 'bg-blue-50' : ''}`}
                             >
                               <div className="flex justify-between items-start">
-                                <div>
+                                <div className="flex-1" onClick={() => markNotificationAsRead(notification.id)}>
                                   <h4 className="font-medium text-sm">{notification.title}</h4>
-                                  <p className="text-xs text-gray-600 mt-1">{notification.message}</p>
+                                  <p className="text-xs text-gray-600 mt-1">
+                                    {notification.message.length > 100 ? 
+                                      `${notification.message.substring(0, 100)}...` : 
+                                      notification.message
+                                    }
+                                  </p>
                                   <p className="text-xs text-gray-400 mt-1">
                                     From: {notification.fromAdmin} • {new Date(notification.date).toLocaleDateString()}
                                   </p>
                                 </div>
-                                {!notification.read && (
-                                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                )}
+                                <div className="flex items-center space-x-2 ml-2">
+                                  {!notification.read && (
+                                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                  )}
+                                  <Dialog>
+                                    <DialogTrigger asChild>
+                                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                        <Maximize className="h-3 w-3" />
+                                      </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                      <DialogHeader>
+                                        <DialogTitle>{notification.title}</DialogTitle>
+                                      </DialogHeader>
+                                      <div className="space-y-4">
+                                        <p className="text-gray-700">{notification.message}</p>
+                                        <p className="text-sm text-gray-500">
+                                          From: {notification.fromAdmin} • {new Date(notification.date).toLocaleString()}
+                                        </p>
+                                      </div>
+                                    </DialogContent>
+                                  </Dialog>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                                    onClick={() => deleteNotification(notification.id)}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           ))
@@ -270,9 +345,10 @@ const UserDashboard: React.FC = () => {
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Tabs defaultValue="user" className="space-y-4">
-            <TabsList className="grid grid-cols-2 w-full max-w-md">
-              <TabsTrigger value="user">User Dashboard</TabsTrigger>
-              <TabsTrigger value="admin">Admin Dashboard</TabsTrigger>
+            <TabsList className="grid grid-cols-3 w-full max-w-lg">
+              <TabsTrigger value="user">Dashboard</TabsTrigger>
+              <TabsTrigger value="profile">Edit Profile</TabsTrigger>
+              <TabsTrigger value="admin">Admin</TabsTrigger>
             </TabsList>
 
             <TabsContent value="user">
@@ -500,6 +576,13 @@ const UserDashboard: React.FC = () => {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="profile">
+              <UserProfileEditor 
+                user={currentUser}
+                onUpdateUser={updateUserProfile}
+              />
             </TabsContent>
 
             <TabsContent value="admin">

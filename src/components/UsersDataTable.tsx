@@ -158,10 +158,12 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Phone</TableHead>
+                <TableHead>Emirates ID</TableHead>
                 <TableHead>Mandalam</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Payment</TableHead>
+                <TableHead>Password</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -172,6 +174,7 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({
                   <TableCell>{user.fullName}</TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>{user.mobileNo}</TableCell>
+                  <TableCell>{user.emiratesId}</TableCell>
                   <TableCell>{user.mandalam}</TableCell>
                   <TableCell>
                     <Badge className={
@@ -190,6 +193,11 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({
                     <Badge className={user.paymentStatus ? 'bg-green-500' : 'bg-gray-500'}>
                       {user.paymentStatus ? 'Paid' : 'Unpaid'}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-xs bg-gray-100 px-2 py-1 rounded font-mono">
+                      {user.emiratesId}
+                    </span>
                   </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">

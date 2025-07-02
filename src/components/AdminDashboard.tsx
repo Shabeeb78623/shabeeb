@@ -19,6 +19,7 @@ import NotificationManager from './NotificationManager';
 import CustomAdminManager from './CustomAdminManager';
 import CSVImport from './CSVImport';
 import * as XLSX from 'xlsx';
+import { Search } from 'lucide-react';
 
 const AdminDashboard: React.FC = () => {
   const { logout, isMasterAdmin, currentUser, currentYear, availableYears, switchYear, createNewYear, getCurrentYearUsers } = useAuth();
@@ -404,9 +405,27 @@ const AdminDashboard: React.FC = () => {
                     </SelectContent>
                   </Select>
                   {isMasterAdmin && (
-                    <Button onClick={createNewYear} variant="outline" size="sm">
-                      New Year
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          New Year
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Create New Year</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to create a new year? This will start a fresh registration period.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={createNewYear}>
+                            Create New Year
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   )}
                 </div>
                 {currentUser?.role === 'mandalam_admin' && (
@@ -419,6 +438,35 @@ const AdminDashboard: React.FC = () => {
                 <Button onClick={exportToExcel} variant="outline">
                   Export to Excel
                 </Button>
+              )}
+              {isMasterAdmin && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive">
+                      Clear Data
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Clear All Data</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete ALL data including users, yearly data, and settings. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={() => {
+                          localStorage.clear();
+                          window.location.reload();
+                        }}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        Clear All Data
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               )}
               <Button onClick={logout} variant="outline">
                 Logout
@@ -581,6 +629,19 @@ const AdminDashboard: React.FC = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>Payment Management</CardTitle>
+                  <div className="mt-4">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        placeholder="Search by name, reg no, phone, or Emirates ID..."
+                        className="pl-10"
+                        onChange={(e) => {
+                          const searchTerm = e.target.value.toLowerCase();
+                          // You can implement search filtering here
+                        }}
+                      />
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
@@ -661,6 +722,19 @@ const AdminDashboard: React.FC = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>Payment Submissions</CardTitle>
+                  <div className="mt-4">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        placeholder="Search by name, reg no, phone, or Emirates ID..."
+                        className="pl-10"
+                        onChange={(e) => {
+                          const searchTerm = e.target.value.toLowerCase();
+                          // You can implement search filtering here
+                        }}
+                      />
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">

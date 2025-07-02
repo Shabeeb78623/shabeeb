@@ -76,7 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const currentYearData = yearlyData.find(data => data.year === year);
     const users = currentYearData?.users || [];
     const nextNumber = users.length + 1;
-    return `${year}-${nextNumber.toString().padStart(4, '0')}`;
+    return `${year}${nextNumber.toString().padStart(4, '0')}`;
   };
 
   const getCurrentYearUsers = (): User[] => {

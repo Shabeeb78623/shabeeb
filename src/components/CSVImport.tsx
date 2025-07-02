@@ -62,7 +62,7 @@ const CSVImport: React.FC<CSVImportProps> = ({ onImportComplete }) => {
             
             return {
               id: `imported_${Date.now()}_${index}`,
-              regNo: `REG${new Date().getFullYear()}${String(Date.now()).slice(-6)}${index}`,
+              regNo: `${new Date().getFullYear()}${String(index + 1).padStart(4, '0')}`,
               fullName,
               mobileNo,
               whatsApp: row['whatsapp'] || mobileNo,
