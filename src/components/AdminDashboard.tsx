@@ -17,6 +17,7 @@ import UsersOverview from './UsersOverview';
 import EnhancedBenefitManager from './EnhancedBenefitManager';
 import NotificationManager from './NotificationManager';
 import CustomAdminManager from './CustomAdminManager';
+import CSVImport from './CSVImport';
 import * as XLSX from 'xlsx';
 
 const AdminDashboard: React.FC = () => {
@@ -350,6 +351,24 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleImportComplete = (importedUsers: User[]) => {
+    const updatedUsers = [...users, ...importedUsers];
+    setUsers(updatedUsers);
+    
+    // Update yearly data
+    const yearlyData = JSON.parse(localStorage.getItem('yearlyData') || '[]');
+    const updatedYearlyData = yearlyData.map((data: any) => 
+      data.year === currentYear ? { ...data, users: updatedUsers } : data
+    );
+    localStorage.setItem('yearlyData', JSON.stringify(updatedYearlyData));
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
+    
+    toast({
+      title: "Import Completed",
+      description: `Successfully imported ${importedUsers.length} users with auto-approved accounts.`,
+    });
+  };
+
   const visibleUsers = getVisibleUsers();
   const stats = {
     total: visibleUsers.length,
@@ -469,7 +488,7 @@ const AdminDashboard: React.FC = () => {
         </div>
 
         <Tabs defaultValue="approvals" className="space-y-4">
-          <TabsList className="grid grid-cols-8 w-full">
+          <TabsList className="grid grid-cols-9 w-full">
             {hasPermission('canApproveUsers') && <TabsTrigger value="approvals">User Approvals</TabsTrigger>}
             {hasPermission('canViewUsers') && <TabsTrigger value="users">Users Data</TabsTrigger>}
             {hasPermission('canViewUsers') && <TabsTrigger value="overview">Users Overview</TabsTrigger>}
@@ -477,6 +496,7 @@ const AdminDashboard: React.FC = () => {
             {hasPermission('canManagePayments') && <TabsTrigger value="payment-submissions">Payment Submissions</TabsTrigger>}
             {hasPermission('canManageBenefits') && <TabsTrigger value="benefits">Benefit Management</TabsTrigger>}
             {hasPermission('canSendNotifications') && <TabsTrigger value="notifications">Send Notifications</TabsTrigger>}
+            {(isMasterAdmin || currentUser?.role === 'admin') && <TabsTrigger value="import">Import Users</TabsTrigger>}
             {isMasterAdmin && <TabsTrigger value="admin-assignment">Admin Assignment</TabsTrigger>}
           </TabsList>
 
@@ -786,6 +806,13 @@ const AdminDashboard: React.FC = () => {
                 onUpdateUser={updateUser}
                 currentAdminName={currentUser?.fullName || 'Admin'}
               />
+            </TabsContent>
+          )}
+
+          {/* Import Users Tab */}
+          {(isMasterAdmin || currentUser?.role === 'admin') && (
+            <TabsContent value="import">
+              <CSVImport onImportComplete={handleImportComplete} />
             </TabsContent>
           )}
 
