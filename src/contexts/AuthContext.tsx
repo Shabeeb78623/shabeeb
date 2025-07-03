@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, YearlyData } from '../types/user';
 
@@ -18,6 +19,7 @@ interface AuthContextType {
   getCurrentYearUsers: () => User[];
   updateCurrentUser: (updatedUser: User) => void;
   submitPayment: (amount: number, remarks: string) => Promise<boolean>;
+  updateUser: (updatedUser: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -93,7 +95,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
     localStorage.setItem('yearlyData', JSON.stringify(updatedData));
     
-    // Also update current users in localStorage for backward compatibility
     if (year === currentYear) {
       localStorage.setItem('users', JSON.stringify(users));
     }
@@ -158,14 +159,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const users = getCurrentYearUsers();
       
-      // Check if user already exists
       if (users.some((u: User) => u.email === userData.email || u.mobileNo === userData.mobileNo || u.emiratesId === userData.emiratesId)) {
         return false;
       }
 
-      // Validate Emirates ID (15 digits)
       if (!/^\d{15}$/.test(userData.emiratesId)) {
         throw new Error('Emirates ID must be exactly 15 digits');
+      }
+
+      // Determine payment amount based on registration type
+      let paymentAmount = 60; // Default for new users
+      if (userData.isReregistration || userData.isImported) {
+        paymentAmount = 50; // Renewal/imported users
       }
 
       const newUser: User = {
@@ -197,7 +202,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isReregistration: userData.isReregistration || false,
         originalUserId: userData.originalUserId,
         paymentStatus: false,
-        paymentAmount: userData.isReregistration || userData.isImported ? 50 : 60,
+        paymentAmount: paymentAmount,
         paymentRemarks: '',
         paymentSubmission: {
           submitted: false,
@@ -246,7 +251,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentYear(year);
     localStorage.setItem('currentYear', JSON.stringify(year));
     
-    // Update current users for the selected year
     const users = getCurrentYearUsers();
     localStorage.setItem('users', JSON.stringify(users));
   };
@@ -260,7 +264,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('availableYears', JSON.stringify(newAvailableYears));
     localStorage.setItem('currentYear', JSON.stringify(newYear));
     
-    // Create new year data with empty users array
     const yearlyData: YearlyData[] = JSON.parse(localStorage.getItem('yearlyData') || '[]');
     const newYearData: YearlyData = {
       year: newYear,
@@ -268,7 +271,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isActive: true
     };
     
-    // Mark all other years as inactive
     const updatedYearlyData = yearlyData.map(data => ({ ...data, isActive: false }));
     updatedYearlyData.push(newYearData);
     
@@ -280,13 +282,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentUser(updatedUser);
     localStorage.setItem('currentUser', JSON.stringify(updatedUser));
     
-    // Also update in yearly data
+    // Update in yearly data
     const yearlyData: YearlyData[] = JSON.parse(localStorage.getItem('yearlyData') || '[]');
     const updatedYearlyData = yearlyData.map(data => ({
       ...data,
       users: data.users.map(user => user.id === updatedUser.id ? updatedUser : user)
     }));
     localStorage.setItem('yearlyData', JSON.stringify(updatedYearlyData));
+
+    // Update current users array for current year
+    const currentUsers = getCurrentYearUsers();
+    const updatedCurrentUsers = currentUsers.map(user => 
+      user.id === updatedUser.id ? updatedUser : user
+    );
+    updateYearlyData(currentYear, updatedCurrentUsers);
+  };
+
+  const updateUser = (updatedUser: User) => {
+    // Update in yearly data across all years
+    const yearlyData: YearlyData[] = JSON.parse(localStorage.getItem('yearlyData') || '[]');
+    const updatedYearlyData = yearlyData.map(data => ({
+      ...data,
+      users: data.users.map(user => user.id === updatedUser.id ? updatedUser : user)
+    }));
+    localStorage.setItem('yearlyData', JSON.stringify(updatedYearlyData));
+
+    // Update current users if it's the current year
+    if (updatedUser.registrationYear === currentYear) {
+      const users = getCurrentYearUsers();
+      const updatedUsers = users.map(user => user.id === updatedUser.id ? updatedUser : user);
+      localStorage.setItem('users', JSON.stringify(updatedUsers));
+    }
+
+    // Update current user if it's the same user
+    if (currentUser && currentUser.id === updatedUser.id) {
+      setCurrentUser(updatedUser);
+      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+    }
   };
 
   const submitPayment = async (amount: number, remarks: string): Promise<boolean> => {
@@ -305,6 +337,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       
       updateCurrentUser(updatedUser);
+      console.log('Payment submitted successfully:', updatedUser.paymentSubmission);
       return true;
     } catch (error) {
       console.error('Payment submission error:', error);
@@ -330,6 +363,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       getCurrentYearUsers,
       updateCurrentUser,
       submitPayment,
+      updateUser,
     }}>
       {children}
     </AuthContext.Provider>

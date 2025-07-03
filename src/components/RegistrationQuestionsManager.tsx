@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit, Trash2, GripVertical, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2, ArrowUp, ArrowDown, Eye, Settings } from 'lucide-react';
 import QuestionFormFields from './QuestionFormFields';
 
 type FieldType = 'text' | 'select' | 'checkbox' | 'textarea' | 'email' | 'phone';
@@ -45,19 +45,54 @@ const RegistrationQuestionsManager: React.FC = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchQuestions();
+    loadQuestions();
   }, []);
 
-  const fetchQuestions = () => {
+  const loadQuestions = () => {
     try {
       const storedQuestions = localStorage.getItem('registrationQuestions');
-      const questionData = storedQuestions ? JSON.parse(storedQuestions) : [];
-      setQuestions(questionData.sort((a: RegistrationQuestion, b: RegistrationQuestion) => a.order_index - b.order_index));
+      if (storedQuestions) {
+        const questionData = JSON.parse(storedQuestions);
+        setQuestions(questionData.sort((a: RegistrationQuestion, b: RegistrationQuestion) => a.order_index - b.order_index));
+      } else {
+        // Initialize with default questions
+        const defaultQuestions: RegistrationQuestion[] = [
+          {
+            id: '1',
+            question_key: 'full_name',
+            question_text: 'Full Name',
+            field_type: 'text',
+            required: true,
+            order_index: 1,
+            placeholder: 'Enter your full name'
+          },
+          {
+            id: '2', 
+            question_key: 'email',
+            question_text: 'Email Address',
+            field_type: 'email',
+            required: true,
+            order_index: 2,
+            placeholder: 'Enter your email address'
+          },
+          {
+            id: '3',
+            question_key: 'emirate',
+            question_text: 'Emirate',
+            field_type: 'select',
+            options: ['Abu Dhabi', 'Dubai', 'Sharjah', 'Ajman', 'Umm Al Quwain', 'Ras Al Khaimah', 'Fujairah'],
+            required: true,
+            order_index: 3
+          }
+        ];
+        localStorage.setItem('registrationQuestions', JSON.stringify(defaultQuestions));
+        setQuestions(defaultQuestions);
+      }
     } catch (error) {
-      console.error('Error fetching questions:', error);
+      console.error('Error loading questions:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch registration questions",
+        description: "Failed to load registration questions",
         variant: "destructive"
       });
     }
@@ -65,8 +100,14 @@ const RegistrationQuestionsManager: React.FC = () => {
 
   const saveQuestions = (updatedQuestions: RegistrationQuestion[]) => {
     try {
-      localStorage.setItem('registrationQuestions', JSON.stringify(updatedQuestions));
-      setQuestions(updatedQuestions.sort((a, b) => a.order_index - b.order_index));
+      // Re-index questions
+      const reindexedQuestions = updatedQuestions
+        .sort((a, b) => a.order_index - b.order_index)
+        .map((q, index) => ({ ...q, order_index: index + 1 }));
+      
+      localStorage.setItem('registrationQuestions', JSON.stringify(reindexedQuestions));
+      setQuestions(reindexedQuestions);
+      console.log('Questions saved:', reindexedQuestions);
     } catch (error) {
       console.error('Error saving questions:', error);
       toast({
@@ -77,10 +118,24 @@ const RegistrationQuestionsManager: React.FC = () => {
     }
   };
 
+  const resetForm = () => {
+    setQuestionForm({
+      question_key: '',
+      question_text: '',
+      field_type: 'text',
+      options: [],
+      required: true,
+      conditional_parent: 'none',
+      conditional_value: '',
+      placeholder: '',
+      help_text: '',
+    });
+  };
+
   const handleAddQuestion = () => {
     if (!questionForm.question_key.trim() || !questionForm.question_text.trim()) {
       toast({
-        title: "Invalid Input",
+        title: "Validation Error",
         description: "Question key and text are required.",
         variant: "destructive"
       });
@@ -101,29 +156,22 @@ const RegistrationQuestionsManager: React.FC = () => {
     try {
       const newQuestion: RegistrationQuestion = {
         id: Date.now().toString(),
-        ...questionForm,
-        order_index: questions.length + 1,
+        question_key: questionForm.question_key,
+        question_text: questionForm.question_text,
+        field_type: questionForm.field_type,
         options: questionForm.field_type === 'select' ? questionForm.options : undefined,
+        required: questionForm.required,
+        order_index: questions.length + 1,
         conditional_parent: questionForm.conditional_parent === 'none' ? undefined : questionForm.conditional_parent,
         conditional_value: questionForm.conditional_value || undefined,
+        placeholder: questionForm.placeholder || undefined,
+        help_text: questionForm.help_text || undefined,
       };
 
       const updatedQuestions = [...questions, newQuestion];
       saveQuestions(updatedQuestions);
       
-      // Reset form
-      setQuestionForm({
-        question_key: '',
-        question_text: '',
-        field_type: 'text',
-        options: [],
-        required: true,
-        conditional_parent: 'none',
-        conditional_value: '',
-        placeholder: '',
-        help_text: '',
-      });
-
+      resetForm();
       setIsAddDialogOpen(false);
 
       toast({
@@ -142,17 +190,67 @@ const RegistrationQuestionsManager: React.FC = () => {
     }
   };
 
+  const handleEditQuestion = (question: RegistrationQuestion) => {
+    setEditingQuestion(question);
+    setQuestionForm({
+      question_key: question.question_key,
+      question_text: question.question_text,
+      field_type: question.field_type,
+      options: question.options || [],
+      required: question.required,
+      conditional_parent: question.conditional_parent || 'none',
+      conditional_value: question.conditional_value || '',
+      placeholder: question.placeholder || '',
+      help_text: question.help_text || '',
+    });
+    setIsEditDialogOpen(true);
+  };
+
   const handleUpdateQuestion = () => {
     if (!editingQuestion) return;
 
+    if (!questionForm.question_key.trim() || !questionForm.question_text.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Question key and text are required.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check for duplicate question key (excluding current question)
+    if (questions.some(q => q.question_key === questionForm.question_key && q.id !== editingQuestion.id)) {
+      toast({
+        title: "Duplicate Key", 
+        description: "A question with this key already exists.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setLoading(true);
     try {
+      const updatedQuestion: RegistrationQuestion = {
+        ...editingQuestion,
+        question_key: questionForm.question_key,
+        question_text: questionForm.question_text,
+        field_type: questionForm.field_type,
+        options: questionForm.field_type === 'select' ? questionForm.options : undefined,
+        required: questionForm.required,
+        conditional_parent: questionForm.conditional_parent === 'none' ? undefined : questionForm.conditional_parent,
+        conditional_value: questionForm.conditional_value || undefined,
+        placeholder: questionForm.placeholder || undefined,
+        help_text: questionForm.help_text || undefined,
+      };
+
       const updatedQuestions = questions.map(q => 
-        q.id === editingQuestion.id ? editingQuestion : q
+        q.id === editingQuestion.id ? updatedQuestion : q
       );
+      
       saveQuestions(updatedQuestions);
       setEditingQuestion(null);
       setIsEditDialogOpen(false);
+      resetForm();
 
       toast({
         title: "Question Updated",
@@ -203,11 +301,6 @@ const RegistrationQuestionsManager: React.FC = () => {
     [updatedQuestions[currentIndex], updatedQuestions[newIndex]] = 
     [updatedQuestions[newIndex], updatedQuestions[currentIndex]];
 
-    // Update order indices
-    updatedQuestions.forEach((question, index) => {
-      question.order_index = index + 1;
-    });
-
     saveQuestions(updatedQuestions);
   };
 
@@ -216,7 +309,10 @@ const RegistrationQuestionsManager: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex justify-between items-center">
-            <span>Registration Questions Manager</span>
+            <div className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Registration Questions Manager
+            </div>
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
@@ -234,7 +330,13 @@ const RegistrationQuestionsManager: React.FC = () => {
                   questions={questions}
                 />
                 <div className="flex justify-end space-x-2 pt-6">
-                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setIsAddDialogOpen(false);
+                      resetForm();
+                    }}
+                  >
                     Cancel
                   </Button>
                   <Button onClick={handleAddQuestion} disabled={loading}>
@@ -268,18 +370,15 @@ const RegistrationQuestionsManager: React.FC = () => {
                     <TableHead>Question</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Required</TableHead>
-                    <TableHead>Conditions</TableHead>
-                    <TableHead className="w-32">Actions</TableHead>
+                    <TableHead>Conditional</TableHead>
+                    <TableHead className="w-48">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {questions.map((question, index) => (
                     <TableRow key={question.id}>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <GripVertical className="h-4 w-4 text-gray-400" />
-                          <span className="font-medium">{question.order_index}</span>
-                        </div>
+                        <span className="font-medium">{question.order_index}</span>
                       </TableCell>
                       <TableCell>
                         <code className="text-sm bg-gray-100 px-2 py-1 rounded">
@@ -294,12 +393,22 @@ const RegistrationQuestionsManager: React.FC = () => {
                               Placeholder: {question.placeholder}
                             </p>
                           )}
+                          {question.help_text && (
+                            <p className="text-sm text-blue-500">
+                              Help: {question.help_text}
+                            </p>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="capitalize">
                           {question.field_type}
                         </Badge>
+                        {question.options && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            {question.options.length} options
+                          </p>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge variant={question.required ? "default" : "secondary"}>
@@ -321,7 +430,7 @@ const RegistrationQuestionsManager: React.FC = () => {
                             onClick={() => moveQuestion(question.id, 'up')}
                             disabled={index === 0}
                           >
-                            ↑
+                            <ArrowUp className="h-3 w-3" />
                           </Button>
                           <Button
                             variant="outline"
@@ -329,65 +438,21 @@ const RegistrationQuestionsManager: React.FC = () => {
                             onClick={() => moveQuestion(question.id, 'down')}
                             disabled={index === questions.length - 1}
                           >
-                            ↓
+                            <ArrowDown className="h-3 w-3" />
                           </Button>
-                          <Dialog open={isEditDialogOpen && editingQuestion?.id === question.id} 
-                                 onOpenChange={setIsEditDialogOpen}>
-                            <DialogTrigger asChild>
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => setEditingQuestion(question)}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                              <DialogHeader>
-                                <DialogTitle>Edit Question</DialogTitle>
-                              </DialogHeader>
-                              {editingQuestion && (
-                                <>
-                                  <QuestionFormFields
-                                    questionForm={{
-                                      question_key: editingQuestion.question_key,
-                                      question_text: editingQuestion.question_text,
-                                      field_type: editingQuestion.field_type,
-                                      options: editingQuestion.options || [],
-                                      required: editingQuestion.required,
-                                      conditional_parent: editingQuestion.conditional_parent || 'none',
-                                      conditional_value: editingQuestion.conditional_value || '',
-                                      placeholder: editingQuestion.placeholder || '',
-                                      help_text: editingQuestion.help_text || '',
-                                    }}
-                                    setQuestionForm={(form) => setEditingQuestion({
-                                      ...editingQuestion,
-                                      ...form,
-                                      conditional_parent: form.conditional_parent === 'none' ? undefined : form.conditional_parent,
-                                    })}
-                                    questions={questions}
-                                  />
-                                  <div className="flex justify-end space-x-2 pt-6">
-                                    <Button variant="outline" onClick={() => {
-                                      setIsEditDialogOpen(false);
-                                      setEditingQuestion(null);
-                                    }}>
-                                      Cancel
-                                    </Button>
-                                    <Button onClick={handleUpdateQuestion} disabled={loading}>
-                                      {loading ? 'Updating...' : 'Update Question'}
-                                    </Button>
-                                  </div>
-                                </>
-                              )}
-                            </DialogContent>
-                          </Dialog>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleEditQuestion(question)}
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
                           <Button 
                             variant="destructive" 
                             size="sm" 
                             onClick={() => handleDeleteQuestion(question.id)}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
                       </TableCell>
@@ -399,6 +464,35 @@ const RegistrationQuestionsManager: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Registration Question</DialogTitle>
+          </DialogHeader>
+          <QuestionFormFields
+            questionForm={questionForm}
+            setQuestionForm={setQuestionForm}
+            questions={questions}
+          />
+          <div className="flex justify-end space-x-2 pt-6">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsEditDialogOpen(false);
+                setEditingQuestion(null);
+                resetForm();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateQuestion} disabled={loading}>
+              {loading ? 'Updating...' : 'Update Question'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

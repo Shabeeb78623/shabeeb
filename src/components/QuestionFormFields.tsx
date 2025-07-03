@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-type FieldType = 'text' | 'select' | 'checkbox' | 'textarea' | 'email' | 'phone';
+type FieldType = 'text' | 'select' | 'checkbox' | 'textarea' | 'email' | 'phone' | 'dependent_select';
 
 interface RegistrationQuestion {
   id: string;
@@ -21,6 +21,7 @@ interface RegistrationQuestion {
   conditional_value?: string;
   placeholder?: string;
   help_text?: string;
+  dependent_options?: { [key: string]: string[] };
 }
 
 interface QuestionFormFieldsProps {
@@ -34,6 +35,7 @@ interface QuestionFormFieldsProps {
     conditional_value: string;
     placeholder: string;
     help_text: string;
+    dependent_options?: { [key: string]: string[] };
   };
   setQuestionForm: (form: any) => void;
   questions: RegistrationQuestion[];
@@ -44,6 +46,25 @@ const QuestionFormFields: React.FC<QuestionFormFieldsProps> = ({
   setQuestionForm, 
   questions 
 }) => {
+  const fieldTypes = [
+    { value: 'text', label: 'Text Input' },
+    { value: 'email', label: 'Email Input' },
+    { value: 'phone', label: 'Phone Input' },
+    { value: 'textarea', label: 'Long Text (Textarea)' },
+    { value: 'select', label: 'Dropdown Selection' },
+    { value: 'dependent_select', label: 'Dependent Dropdown' },
+    { value: 'checkbox', label: 'Checkbox' },
+  ];
+
+  const handleDependentOptionsChange = (parentOption: string, childOptions: string) => {
+    const current = questionForm.dependent_options || {};
+    const updated = {
+      ...current,
+      [parentOption]: childOptions.split('\n').filter(Boolean)
+    };
+    setQuestionForm({ ...questionForm, dependent_options: updated });
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -55,7 +76,7 @@ const QuestionFormFields: React.FC<QuestionFormFieldsProps> = ({
             <Label htmlFor="question_key">Question Key *</Label>
             <Input
               id="question_key"
-              placeholder="e.g., full_name, emirate, phone_number"
+              placeholder="e.g., full_name, emirate, area"
               value={questionForm.question_key}
               onChange={(e) => setQuestionForm({ ...questionForm, question_key: e.target.value })}
             />
@@ -111,12 +132,11 @@ const QuestionFormFields: React.FC<QuestionFormFieldsProps> = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="text">Text Input</SelectItem>
-                <SelectItem value="email">Email Input</SelectItem>
-                <SelectItem value="phone">Phone Input</SelectItem>
-                <SelectItem value="textarea">Long Text (Textarea)</SelectItem>
-                <SelectItem value="select">Dropdown Selection</SelectItem>
-                <SelectItem value="checkbox">Checkbox</SelectItem>
+                {fieldTypes.map(type => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -137,6 +157,48 @@ const QuestionFormFields: React.FC<QuestionFormFieldsProps> = ({
               <p className="text-sm text-gray-500 mt-1">
                 Enter one option per line. Users will see these as dropdown choices.
               </p>
+            </div>
+          )}
+
+          {questionForm.field_type === 'dependent_select' && (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="parent_options">Parent Options *</Label>
+                <Textarea
+                  id="parent_options"
+                  placeholder="Enter parent options (one per line):&#10;Abu Dhabi&#10;Dubai&#10;Sharjah"
+                  value={questionForm.options.join('\n')}
+                  onChange={(e) => setQuestionForm({ 
+                    ...questionForm, 
+                    options: e.target.value.split('\n').filter(Boolean) 
+                  })}
+                  rows={4}
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  These are the main options users will select first.
+                </p>
+              </div>
+
+              <div>
+                <Label>Dependent Options</Label>
+                <p className="text-sm text-gray-500 mb-3">
+                  Configure what options appear when each parent option is selected:
+                </p>
+                {questionForm.options.map((parentOption) => (
+                  <div key={parentOption} className="border rounded-lg p-3 mb-3">
+                    <Label className="font-medium text-sm">
+                      When "{parentOption}" is selected, show:
+                    </Label>
+                    <Textarea
+                      placeholder={`Options for ${parentOption} (one per line):&#10;Option 1&#10;Option 2`}
+                      value={(questionForm.dependent_options?.[parentOption] || []).join('\n')}
+                      onChange={(e) => handleDependentOptionsChange(parentOption, e.target.value)}
+                      rows={3}
+                      className="mt-2"
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -171,7 +233,7 @@ const QuestionFormFields: React.FC<QuestionFormFieldsProps> = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">No condition</SelectItem>
-                {questions.filter(q => q.field_type === 'select').map(q => (
+                {questions.filter(q => q.field_type === 'select' || q.field_type === 'dependent_select').map(q => (
                   <SelectItem key={q.id} value={q.question_key}>
                     {q.question_text}
                   </SelectItem>
