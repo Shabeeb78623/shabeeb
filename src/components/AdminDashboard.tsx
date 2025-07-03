@@ -477,9 +477,9 @@ const AdminDashboard: React.FC = () => {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Statistics Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-4">
           <Card>
             <CardContent className="p-4">
               <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
@@ -536,7 +536,7 @@ const AdminDashboard: React.FC = () => {
           </Card>
         </div>
 
-        <Tabs defaultValue="approvals" className="space-y-4">
+        <Tabs defaultValue="approvals" className="space-y-8">
           <TabsList className="grid grid-cols-10 w-full">
             {hasPermission('canApproveUsers') && <TabsTrigger value="approvals">User Approvals</TabsTrigger>}
             {hasPermission('canViewUsers') && <TabsTrigger value="users">Users Data</TabsTrigger>}
@@ -552,7 +552,7 @@ const AdminDashboard: React.FC = () => {
 
           {/* User Approvals Tab */}
           {hasPermission('canApproveUsers') && (
-            <TabsContent value="approvals">
+            <TabsContent value="approvals" className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Pending Approvals</CardTitle>
@@ -606,7 +606,7 @@ const AdminDashboard: React.FC = () => {
 
           {/* Users Data Tab */}
           {hasPermission('canViewUsers') && (
-            <TabsContent value="users">
+            <TabsContent value="users" className="space-y-6">
               <UsersDataTable 
                 users={visibleUsers}
                 onUpdateUser={updateUser}
@@ -620,14 +620,14 @@ const AdminDashboard: React.FC = () => {
 
           {/* Users Overview Tab */}
           {hasPermission('canViewUsers') && (
-            <TabsContent value="overview">
+            <TabsContent value="overview" className="space-y-6">
               <UsersOverview users={visibleUsers} />
             </TabsContent>
           )}
 
           {/* Payment Management Tab */}
           {hasPermission('canManagePayments') && (
-            <TabsContent value="payments">
+            <TabsContent value="payments" className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Payment Management</CardTitle>
@@ -720,7 +720,7 @@ const AdminDashboard: React.FC = () => {
 
           {/* Payment Submissions Tab */}
           {hasPermission('canManagePayments') && (
-            <TabsContent value="payment-submissions">
+            <TabsContent value="payment-submissions" className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Payment Submissions</CardTitle>
@@ -869,14 +869,14 @@ const AdminDashboard: React.FC = () => {
 
           {/* Benefit Management Tab */}
           {hasPermission('canManageBenefits') && (
-            <TabsContent value="benefits">
+            <TabsContent value="benefits" className="space-y-6">
               <EnhancedBenefitManager users={visibleUsers} onUpdateUser={updateUser} />
             </TabsContent>
           )}
 
           {/* Notifications Tab */}
           {hasPermission('canSendNotifications') && (
-            <TabsContent value="notifications">
+            <TabsContent value="notifications" className="space-y-6">
               <NotificationManager 
                 users={visibleUsers}
                 onUpdateUser={updateUser}
@@ -887,14 +887,14 @@ const AdminDashboard: React.FC = () => {
 
           {/* Import Users Tab */}
           {(isMasterAdmin || currentUser?.role === 'admin') && (
-            <TabsContent value="import">
+            <TabsContent value="import" className="space-y-6">
               <CSVImport onImportComplete={handleImportComplete} />
             </TabsContent>
           )}
 
           {/* Admin Assignment Tab */}
           {isMasterAdmin && (
-            <TabsContent value="admin-assignment">
+            <TabsContent value="admin-assignment" className="space-y-6">
               <CustomAdminManager 
                 users={users}
                 onUpdateUser={updateUser}
@@ -904,7 +904,7 @@ const AdminDashboard: React.FC = () => {
 
           {/* Registration Questions Tab */}
           {isMasterAdmin && (
-            <TabsContent value="questions">
+            <TabsContent value="questions" className="space-y-6">
               <RegistrationQuestionsManager />
             </TabsContent>
           )}

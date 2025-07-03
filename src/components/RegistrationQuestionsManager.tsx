@@ -33,7 +33,7 @@ const RegistrationQuestionsManager: React.FC = () => {
     field_type: 'text' as FieldType,
     options: [] as string[],
     required: true,
-    conditional_parent: '',
+        conditional_parent: 'none',
     conditional_value: '',
   });
   const [loading, setLoading] = useState(false);
@@ -79,7 +79,7 @@ const RegistrationQuestionsManager: React.FC = () => {
         ...questionForm,
         order_index: questions.length + 1,
         options: questionForm.field_type === 'select' ? questionForm.options : undefined,
-        conditional_parent: questionForm.conditional_parent || undefined,
+        conditional_parent: questionForm.conditional_parent === 'none' ? undefined : questionForm.conditional_parent,
         conditional_value: questionForm.conditional_value || undefined,
       };
 
@@ -92,7 +92,7 @@ const RegistrationQuestionsManager: React.FC = () => {
         field_type: 'text',
         options: [],
         required: true,
-        conditional_parent: '',
+        conditional_parent: 'none',
         conditional_value: '',
       });
 
@@ -221,7 +221,7 @@ const RegistrationQuestionsManager: React.FC = () => {
                       <SelectValue placeholder="Show only if this field..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No condition</SelectItem>
+                      <SelectItem value="none">No condition</SelectItem>
                       {questions.filter(q => q.field_type === 'select').map(q => (
                         <SelectItem key={q.id} value={q.question_key}>
                           {q.question_text}

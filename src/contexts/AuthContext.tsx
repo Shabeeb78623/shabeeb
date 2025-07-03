@@ -196,7 +196,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isReregistration: userData.isReregistration || false,
         originalUserId: userData.originalUserId,
         paymentStatus: false,
-        paymentAmount: userData.isReregistration ? 50 : 60,
+        paymentAmount: userData.isReregistration || userData.isImported ? 50 : 60,
         paymentRemarks: '',
         paymentSubmission: {
           submitted: false,
