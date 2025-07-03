@@ -26,25 +26,6 @@ const UserDashboard: React.FC = () => {
   const [expandedNotification, setExpandedNotification] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Check if renewal notification exists
-  const renewalNotification = currentUser?.notifications?.find(n => 
-    n.title === 'New Year Registration Open' && !n.read
-  );
-
-  const handleRenew = () => {
-    if (!currentUser) return;
-    const updatedUser = {
-      ...currentUser,
-      isReregistration: true,
-      registrationYear: new Date().getFullYear() + 1,
-      paymentStatus: false,
-      notifications: currentUser.notifications?.map(n => 
-        n.title === 'New Year Registration Open' ? { ...n, read: true } : n
-      ) || []
-    };
-    updateUserProfile(updatedUser);
-  };
-
   if (!currentUser) return null;
 
   const handlePaymentSubmission = () => {
@@ -364,15 +345,10 @@ const UserDashboard: React.FC = () => {
         </header>
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {renewalNotification && (
-            <div className="mb-6">
-              <RenewalNotification
-                currentYear={currentUser.registrationYear}
-                nextYear={new Date().getFullYear() + 1}
-                onRenew={handleRenew}
-              />
-            </div>
-          )}
+          {/* Renewal Notification - no props needed */}
+          <div className="mb-6">
+            <RenewalNotification />
+          </div>
           
           <Tabs defaultValue="user" className="space-y-4">
             <TabsList className="grid grid-cols-3 w-full max-w-lg">
@@ -454,25 +430,25 @@ const UserDashboard: React.FC = () => {
                             )}
                           </div>
                         ) : (
-                     <div className="space-y-4">
-                       <div className="bg-green-50 p-4 rounded-lg mb-4">
-                         <p className="text-sm font-medium text-green-800">
-                           Payment Amount: AED {currentUser.isReregistration || currentUser.isImported ? '50' : '60'}
-                         </p>
-                         <p className="text-xs text-green-600 mt-1">
-                           {currentUser.isReregistration || currentUser.isImported 
-                             ? 'Renewal/Import rate' 
-                             : 'New registration rate'
-                           }
-                         </p>
-                       </div>
-                       <p className="text-sm text-gray-600">Confirm your payment details for approval</p>
-                       <Input
-                         type="number"
-                         value={currentUser.isReregistration || currentUser.isImported ? 50 : 60}
-                         disabled
-                         className="bg-gray-100"
-                       />
+                          <div className="space-y-4">
+                            <div className="bg-green-50 p-4 rounded-lg mb-4">
+                              <p className="text-sm font-medium text-green-800">
+                                Payment Amount: AED {currentUser.isReregistration || currentUser.isImported ? '50' : '60'}
+                              </p>
+                              <p className="text-xs text-green-600 mt-1">
+                                {currentUser.isReregistration || currentUser.isImported 
+                                  ? 'Renewal/Import rate' 
+                                  : 'New registration rate'
+                                }
+                              </p>
+                            </div>
+                            <p className="text-sm text-gray-600">Confirm your payment details for approval</p>
+                            <Input
+                              type="number"
+                              value={currentUser.isReregistration || currentUser.isImported ? 50 : 60}
+                              disabled
+                              className="bg-gray-100"
+                            />
                             <div className="space-y-2">
                               <label className="block text-sm font-medium text-gray-700">
                                 Payment Remarks (Required)
@@ -485,8 +461,8 @@ const UserDashboard: React.FC = () => {
                               />
                             </div>
                             <Button 
-                       onClick={handlePaymentSubmission}
-                       disabled={submittingPayment || !paymentRemarks.trim()}
+                              onClick={handlePaymentSubmission}
+                              disabled={submittingPayment || !paymentRemarks.trim()}
                               className="w-full"
                             >
                               {submittingPayment ? 'Submitting...' : 'Submit Payment'}
@@ -732,6 +708,11 @@ const UserDashboard: React.FC = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Renewal Notification - no props needed */}
+        <div className="mb-6">
+          <RenewalNotification />
+        </div>
+
         {/* Status Card */}
         <Card>
           <CardHeader>
