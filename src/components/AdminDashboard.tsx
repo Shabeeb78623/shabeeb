@@ -18,6 +18,7 @@ import EnhancedBenefitManager from './EnhancedBenefitManager';
 import NotificationManager from './NotificationManager';
 import CustomAdminManager from './CustomAdminManager';
 import CSVImport from './CSVImport';
+import RegistrationQuestionsManager from './RegistrationQuestionsManager';
 import * as XLSX from 'xlsx';
 import { Search } from 'lucide-react';
 
@@ -536,7 +537,7 @@ const AdminDashboard: React.FC = () => {
         </div>
 
         <Tabs defaultValue="approvals" className="space-y-4">
-          <TabsList className="grid grid-cols-9 w-full">
+          <TabsList className="grid grid-cols-10 w-full">
             {hasPermission('canApproveUsers') && <TabsTrigger value="approvals">User Approvals</TabsTrigger>}
             {hasPermission('canViewUsers') && <TabsTrigger value="users">Users Data</TabsTrigger>}
             {hasPermission('canViewUsers') && <TabsTrigger value="overview">Users Overview</TabsTrigger>}
@@ -546,6 +547,7 @@ const AdminDashboard: React.FC = () => {
             {hasPermission('canSendNotifications') && <TabsTrigger value="notifications">Send Notifications</TabsTrigger>}
             {(isMasterAdmin || currentUser?.role === 'admin') && <TabsTrigger value="import">Import Users</TabsTrigger>}
             {isMasterAdmin && <TabsTrigger value="admin-assignment">Admin Assignment</TabsTrigger>}
+            {isMasterAdmin && <TabsTrigger value="questions">Registration Questions</TabsTrigger>}
           </TabsList>
 
           {/* User Approvals Tab */}
@@ -897,6 +899,13 @@ const AdminDashboard: React.FC = () => {
                 users={users}
                 onUpdateUser={updateUser}
               />
+            </TabsContent>
+          )}
+
+          {/* Registration Questions Tab */}
+          {isMasterAdmin && (
+            <TabsContent value="questions">
+              <RegistrationQuestionsManager />
             </TabsContent>
           )}
         </Tabs>

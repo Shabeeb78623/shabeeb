@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +9,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2, GripVertical } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 
 type FieldType = 'text' | 'select' | 'checkbox' | 'textarea';
 
@@ -22,6 +20,8 @@ interface RegistrationQuestion {
   options?: string[];
   required: boolean;
   order_index: number;
+  conditional_parent?: string;
+  conditional_value?: string;
 }
 
 const RegistrationQuestionsManager: React.FC = () => {
@@ -33,6 +33,8 @@ const RegistrationQuestionsManager: React.FC = () => {
     field_type: 'text' as FieldType,
     options: [] as string[],
     required: true,
+    conditional_parent: '',
+    conditional_value: '',
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -41,27 +43,11 @@ const RegistrationQuestionsManager: React.FC = () => {
     fetchQuestions();
   }, []);
 
-  const fetchQuestions = async () => {
+  const fetchQuestions = () => {
     try {
-      const { data, error } = await supabase
-        .from('registration_questions')
-        .select('*')
-        .order('order_index');
-
-      if (error) throw error;
-      
-      // Transform the data to match our interface
-      const transformedQuestions: RegistrationQuestion[] = (data || []).map(question => ({
-        id: question.id,
-        question_key: question.question_key,
-        question_text: question.question_text,
-        field_type: question.field_type as FieldType,
-        options: Array.isArray(question.options) ? question.options as string[] : undefined,
-        required: question.required,
-        order_index: question.order_index
-      }));
-      
-      setQuestions(transformedQuestions);
+      const storedQuestions = localStorage.getItem('registrationQuestions');
+      const questionData = storedQuestions ? JSON.parse(storedQuestions) : [];
+      setQuestions(questionData);
     } catch (error) {
       toast({
         title: "Error",
@@ -71,7 +57,12 @@ const RegistrationQuestionsManager: React.FC = () => {
     }
   };
 
-  const handleAddQuestion = async () => {
+  const saveQuestions = (updatedQuestions: RegistrationQuestion[]) => {
+    localStorage.setItem('registrationQuestions', JSON.stringify(updatedQuestions));
+    setQuestions(updatedQuestions);
+  };
+
+  const handleAddQuestion = () => {
     if (!questionForm.question_key || !questionForm.question_text) {
       toast({
         title: "Invalid Input",
@@ -83,23 +74,26 @@ const RegistrationQuestionsManager: React.FC = () => {
 
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('registration_questions')
-        .insert([{
-          ...questionForm,
-          order_index: questions.length + 1,
-          options: questionForm.field_type === 'select' ? questionForm.options : null
-        }]);
+      const newQuestion: RegistrationQuestion = {
+        id: Date.now().toString(),
+        ...questionForm,
+        order_index: questions.length + 1,
+        options: questionForm.field_type === 'select' ? questionForm.options : undefined,
+        conditional_parent: questionForm.conditional_parent || undefined,
+        conditional_value: questionForm.conditional_value || undefined,
+      };
 
-      if (error) throw error;
-
-      await fetchQuestions();
+      const updatedQuestions = [...questions, newQuestion];
+      saveQuestions(updatedQuestions);
+      
       setQuestionForm({
         question_key: '',
         question_text: '',
         field_type: 'text',
         options: [],
         required: true,
+        conditional_parent: '',
+        conditional_value: '',
       });
 
       toast({
@@ -117,24 +111,15 @@ const RegistrationQuestionsManager: React.FC = () => {
     }
   };
 
-  const handleUpdateQuestion = async () => {
+  const handleUpdateQuestion = () => {
     if (!editingQuestion) return;
 
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('registration_questions')
-        .update({
-          question_text: editingQuestion.question_text,
-          field_type: editingQuestion.field_type,
-          options: editingQuestion.field_type === 'select' ? editingQuestion.options : null,
-          required: editingQuestion.required,
-        })
-        .eq('id', editingQuestion.id);
-
-      if (error) throw error;
-
-      await fetchQuestions();
+      const updatedQuestions = questions.map(q => 
+        q.id === editingQuestion.id ? editingQuestion : q
+      );
+      saveQuestions(updatedQuestions);
       setEditingQuestion(null);
 
       toast({
@@ -152,17 +137,11 @@ const RegistrationQuestionsManager: React.FC = () => {
     }
   };
 
-  const handleDeleteQuestion = async (id: string) => {
+  const handleDeleteQuestion = (id: string) => {
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('registration_questions')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      await fetchQuestions();
+      const updatedQuestions = questions.filter(q => q.id !== id);
+      saveQuestions(updatedQuestions);
 
       toast({
         title: "Question Deleted",
@@ -191,13 +170,13 @@ const RegistrationQuestionsManager: React.FC = () => {
                 Add Question
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Add New Question</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <Input
-                  placeholder="Question Key (e.g., full_name)"
+                  placeholder="Question Key (e.g., full_name, emirate)"
                   value={questionForm.question_key}
                   onChange={(e) => setQuestionForm({ ...questionForm, question_key: e.target.value })}
                 />
@@ -232,6 +211,34 @@ const RegistrationQuestionsManager: React.FC = () => {
                   />
                 )}
 
+                <div className="space-y-2">
+                  <h4 className="font-medium">Conditional Logic (Optional)</h4>
+                  <Select
+                    value={questionForm.conditional_parent}
+                    onValueChange={(value) => setQuestionForm({ ...questionForm, conditional_parent: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Show only if this field..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">No condition</SelectItem>
+                      {questions.filter(q => q.field_type === 'select').map(q => (
+                        <SelectItem key={q.id} value={q.question_key}>
+                          {q.question_text}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  {questionForm.conditional_parent && (
+                    <Input
+                      placeholder="...equals this value"
+                      value={questionForm.conditional_value}
+                      onChange={(e) => setQuestionForm({ ...questionForm, conditional_value: e.target.value })}
+                    />
+                  )}
+                </div>
+
                 <Button onClick={handleAddQuestion} disabled={loading} className="w-full">
                   Add Question
                 </Button>
@@ -249,6 +256,7 @@ const RegistrationQuestionsManager: React.FC = () => {
               <TableHead>Question</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Required</TableHead>
+              <TableHead>Conditions</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -262,7 +270,7 @@ const RegistrationQuestionsManager: React.FC = () => {
                   </div>
                 </TableCell>
                 <TableCell className="font-mono text-sm">{question.question_key}</TableCell>
-                <TableCell>{question.question_text}</TableCell>
+                <TableCell className="max-w-xs truncate">{question.question_text}</TableCell>
                 <TableCell>
                   <Badge variant="outline">{question.field_type}</Badge>
                 </TableCell>
@@ -270,6 +278,13 @@ const RegistrationQuestionsManager: React.FC = () => {
                   <Badge variant={question.required ? "default" : "secondary"}>
                     {question.required ? "Required" : "Optional"}
                   </Badge>
+                </TableCell>
+                <TableCell>
+                  {question.conditional_parent && (
+                    <Badge variant="outline" className="text-xs">
+                      If {question.conditional_parent} = {question.conditional_value}
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell>
                   <div className="flex space-x-2">
@@ -283,7 +298,7 @@ const RegistrationQuestionsManager: React.FC = () => {
                           <Edit className="h-4 w-4" />
                         </Button>
                       </DialogTrigger>
-                      <DialogContent>
+                      <DialogContent className="max-w-2xl">
                         <DialogHeader>
                           <DialogTitle>Edit Question</DialogTitle>
                         </DialogHeader>
@@ -313,6 +328,18 @@ const RegistrationQuestionsManager: React.FC = () => {
                                 <SelectItem value="checkbox">Checkbox</SelectItem>
                               </SelectContent>
                             </Select>
+                            
+                            {editingQuestion.field_type === 'select' && (
+                              <Textarea
+                                placeholder="Options (one per line)"
+                                value={editingQuestion.options?.join('\n') || ''}
+                                onChange={(e) => setEditingQuestion({ 
+                                  ...editingQuestion, 
+                                  options: e.target.value.split('\n').filter(Boolean) 
+                                })}
+                              />
+                            )}
+                            
                             <Button onClick={handleUpdateQuestion} className="w-full">
                               Update Question
                             </Button>
@@ -333,6 +360,12 @@ const RegistrationQuestionsManager: React.FC = () => {
             ))}
           </TableBody>
         </Table>
+        
+        {questions.length === 0 && (
+          <div className="text-center py-8 text-gray-500">
+            No registration questions configured. Add your first question to get started.
+          </div>
+        )}
       </CardContent>
     </Card>
   );
