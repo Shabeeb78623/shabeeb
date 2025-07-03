@@ -19,6 +19,8 @@ export interface User {
   recommendedBy: string;
   photo?: string;
   emiratesId: string;
+  password?: string;
+  isImported?: boolean;
   status: 'pending' | 'approved' | 'rejected';
   role: 'user' | 'admin' | 'master_admin' | 'mandalam_admin' | 'custom_admin';
   mandalamAccess?: 'BALUSHERI' | 'KUNNAMANGALAM' | 'KODUVALLI' | 'NADAPURAM' | 'KOYLANDI' | 'VADAKARA' | 'BEPUR' | 'KUTTIYADI';

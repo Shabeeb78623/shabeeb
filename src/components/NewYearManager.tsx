@@ -79,7 +79,7 @@ const NewYearManager: React.FC<NewYearManagerProps> = ({ users, onNewYear, onUpd
           {
             id: Date.now().toString() + Math.random(),
             title: 'New Year Registration Open',
-            message: `Registration for ${selectedYear} is now open. Please re-register to continue your membership.`,
+            message: `Registration for ${selectedYear} is now open. Click the renewal button to continue your membership for just AED 50.`,
             date: new Date().toISOString(),
             read: false,
             fromAdmin: 'System',
@@ -264,30 +264,28 @@ const NewYearManager: React.FC<NewYearManagerProps> = ({ users, onNewYear, onUpd
                       </div>
                     </TableCell>
                     <TableCell>
-                      {!config.is_active && (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="sm">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Year Configuration</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete the year {config.year} configuration? 
-                                This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteYear(config.id, config.year)}>
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      )}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm" disabled={config.is_active}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Year Configuration</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete the year {config.year} configuration? 
+                              This will remove all associated data. This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteYear(config.id, config.year)}>
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </TableCell>
                   </TableRow>
                 );

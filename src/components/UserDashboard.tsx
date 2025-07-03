@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Bell, Eye, EyeOff, Trash2, Maximize } from 'lucide-react';
 import AdminDashboard from './AdminDashboard';
 import UserProfileEditor from './UserProfileEditor';
+import RenewalNotification from './RenewalNotification';
 
 const UserDashboard: React.FC = () => {
   const { currentUser, isAdmin, logout, changePassword } = useAuth();
@@ -25,18 +26,38 @@ const UserDashboard: React.FC = () => {
   const [expandedNotification, setExpandedNotification] = useState<string | null>(null);
   const { toast } = useToast();
 
+  // Check if renewal notification exists
+  const renewalNotification = currentUser?.notifications?.find(n => 
+    n.title === 'New Year Registration Open' && !n.read
+  );
+
+  const handleRenew = () => {
+    if (!currentUser) return;
+    const updatedUser = {
+      ...currentUser,
+      isReregistration: true,
+      registrationYear: new Date().getFullYear() + 1,
+      paymentStatus: false,
+      notifications: currentUser.notifications?.map(n => 
+        n.title === 'New Year Registration Open' ? { ...n, read: true } : n
+      ) || []
+    };
+    updateUserProfile(updatedUser);
+  };
+
   if (!currentUser) return null;
 
   const handlePaymentSubmission = () => {
-    if (!paymentRemarks.trim() || paymentAmount <= 0) {
+    if (!paymentRemarks.trim()) {
       toast({
         title: "Error",
-        description: "Please enter payment remarks and amount before submitting.",
+        description: "Please enter payment remarks before submitting.",
         variant: "destructive"
       });
       return;
     }
 
+    const amount = currentUser.isReregistration || currentUser.isImported ? 50 : 60;
     setSubmittingPayment(true);
     
     // Update user's payment submission status
@@ -50,7 +71,7 @@ const UserDashboard: React.FC = () => {
             submissionDate: new Date().toISOString(),
             approvalStatus: 'pending',
             userRemarks: paymentRemarks.trim(),
-            amount: paymentAmount
+            amount: amount
           }
         };
       }
@@ -65,16 +86,15 @@ const UserDashboard: React.FC = () => {
         submissionDate: new Date().toISOString(),
         approvalStatus: 'pending',
         userRemarks: paymentRemarks.trim(),
-        amount: paymentAmount
+        amount: amount
       }
     }));
     
     setSubmittingPayment(false);
     setPaymentRemarks('');
-    setPaymentAmount(0);
     toast({
       title: "Payment Submitted",
-      description: "Your payment submission is now pending admin approval.",
+      description: `Your payment submission (AED ${amount}) is now pending admin approval.`,
     });
     
     // Refresh the page to show updated status
@@ -344,6 +364,16 @@ const UserDashboard: React.FC = () => {
         </header>
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {renewalNotification && (
+            <div className="mb-6">
+              <RenewalNotification
+                currentYear={currentUser.registrationYear}
+                nextYear={new Date().getFullYear() + 1}
+                onRenew={handleRenew}
+              />
+            </div>
+          )}
+          
           <Tabs defaultValue="user" className="space-y-4">
             <TabsList className="grid grid-cols-3 w-full max-w-lg">
               <TabsTrigger value="user">Dashboard</TabsTrigger>
@@ -424,21 +454,25 @@ const UserDashboard: React.FC = () => {
                             )}
                           </div>
                         ) : (
-                          <div className="space-y-4">
-                            <p className="text-sm text-gray-600">Submit your payment for approval</p>
-                            <div className="space-y-2">
-                              <label className="block text-sm font-medium text-gray-700">
-                                Payment Amount (AED) *
-                              </label>
-                              <Input
-                                type="number"
-                                placeholder="Enter payment amount..."
-                                value={paymentAmount || ''}
-                                onChange={(e) => setPaymentAmount(Number(e.target.value))}
-                                min="1"
-                                required
-                              />
-                            </div>
+                     <div className="space-y-4">
+                       <div className="bg-green-50 p-4 rounded-lg mb-4">
+                         <p className="text-sm font-medium text-green-800">
+                           Payment Amount: AED {currentUser.isReregistration || currentUser.isImported ? '50' : '60'}
+                         </p>
+                         <p className="text-xs text-green-600 mt-1">
+                           {currentUser.isReregistration || currentUser.isImported 
+                             ? 'Renewal/Import rate' 
+                             : 'New registration rate'
+                           }
+                         </p>
+                       </div>
+                       <p className="text-sm text-gray-600">Confirm your payment details for approval</p>
+                       <Input
+                         type="number"
+                         value={currentUser.isReregistration || currentUser.isImported ? 50 : 60}
+                         disabled
+                         className="bg-gray-100"
+                       />
                             <div className="space-y-2">
                               <label className="block text-sm font-medium text-gray-700">
                                 Payment Remarks (Required)
@@ -451,8 +485,8 @@ const UserDashboard: React.FC = () => {
                               />
                             </div>
                             <Button 
-                              onClick={handlePaymentSubmission}
-                              disabled={submittingPayment || !paymentRemarks.trim() || paymentAmount <= 0}
+                       onClick={handlePaymentSubmission}
+                       disabled={submittingPayment || !paymentRemarks.trim()}
                               className="w-full"
                             >
                               {submittingPayment ? 'Submitting...' : 'Submit Payment'}
@@ -768,21 +802,25 @@ const UserDashboard: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    <p className="text-sm text-gray-600">Submit your payment for approval</p>
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Payment Amount (AED) *
-                      </label>
-                      <Input
-                        type="number"
-                        placeholder="Enter payment amount..."
-                        value={paymentAmount || ''}
-                        onChange={(e) => setPaymentAmount(Number(e.target.value))}
-                        min="1"
-                        required
-                      />
-                    </div>
+                   <div className="space-y-4">
+                     <div className="bg-green-50 p-4 rounded-lg mb-4">
+                       <p className="text-sm font-medium text-green-800">
+                         Payment Amount: AED {currentUser.isReregistration || currentUser.isImported ? '50' : '60'}
+                       </p>
+                       <p className="text-xs text-green-600 mt-1">
+                         {currentUser.isReregistration || currentUser.isImported 
+                           ? 'Renewal/Import rate' 
+                           : 'New registration rate'
+                         }
+                       </p>
+                     </div>
+                     <p className="text-sm text-gray-600">Confirm your payment details for approval</p>
+                     <Input
+                       type="number"
+                       value={currentUser.isReregistration || currentUser.isImported ? 50 : 60}
+                       disabled
+                       className="bg-gray-100"
+                     />
                     <div className="space-y-2">
                       <label className="block text-sm font-medium text-gray-700">
                         Payment Remarks (Required)
@@ -795,8 +833,8 @@ const UserDashboard: React.FC = () => {
                       />
                     </div>
                     <Button 
-                      onClick={handlePaymentSubmission}
-                      disabled={submittingPayment || !paymentRemarks.trim() || paymentAmount <= 0}
+                       onClick={handlePaymentSubmission}
+                       disabled={submittingPayment || !paymentRemarks.trim()}
                       className="w-full"
                     >
                       {submittingPayment ? 'Submitting...' : 'Submit Payment'}

@@ -113,10 +113,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let foundUser: User | null = null;
 
     for (const data of yearlyData) {
-      const user = data.users.find((u: User) => u.email === email);
+      // Try email/phone login
+      const user = data.users.find((u: User) => 
+        u.email === email || u.mobileNo === email
+      );
       if (user) {
-        foundUser = user;
-        break;
+        // Check password - imported users use Emirates ID as password, others use their set password
+        const isCorrectPassword = user.isImported 
+          ? user.emiratesId === password 
+          : user.password === password;
+        
+        if (isCorrectPassword) {
+          foundUser = user;
+          break;
+        }
       }
     }
     
@@ -177,6 +187,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         recommendedBy: userData.recommendedBy,
         photo: userData.photo,
         emiratesId: userData.emiratesId,
+        password: userData.password,
+        isImported: userData.isImported || false,
         status: 'pending',
         role: 'user',
         registrationDate: new Date().toISOString(),

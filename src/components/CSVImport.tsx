@@ -80,6 +80,7 @@ const CSVImport: React.FC<CSVImportProps> = ({ onImportComplete }) => {
               recommendedBy: row['recommended by'] || row['recommended'] || '',
               photo: '',
               emiratesId,
+              isImported: true,
               status: 'approved' as const,
               role: 'user' as const,
               registrationDate: new Date().toISOString(),
