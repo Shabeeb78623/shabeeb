@@ -1,16 +1,15 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit, Trash2, GripVertical } from 'lucide-react';
+import { Plus, Edit, Trash2, GripVertical, Eye } from 'lucide-react';
+import QuestionFormFields from './QuestionFormFields';
 
-type FieldType = 'text' | 'select' | 'checkbox' | 'textarea';
+type FieldType = 'text' | 'select' | 'checkbox' | 'textarea' | 'email' | 'phone';
 
 interface RegistrationQuestion {
   id: string;
@@ -22,6 +21,8 @@ interface RegistrationQuestion {
   order_index: number;
   conditional_parent?: string;
   conditional_value?: string;
+  placeholder?: string;
+  help_text?: string;
 }
 
 const RegistrationQuestionsManager: React.FC = () => {
@@ -33,10 +34,14 @@ const RegistrationQuestionsManager: React.FC = () => {
     field_type: 'text' as FieldType,
     options: [] as string[],
     required: true,
-        conditional_parent: 'none',
+    conditional_parent: 'none',
     conditional_value: '',
+    placeholder: '',
+    help_text: '',
   });
   const [loading, setLoading] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -47,8 +52,9 @@ const RegistrationQuestionsManager: React.FC = () => {
     try {
       const storedQuestions = localStorage.getItem('registrationQuestions');
       const questionData = storedQuestions ? JSON.parse(storedQuestions) : [];
-      setQuestions(questionData);
+      setQuestions(questionData.sort((a: RegistrationQuestion, b: RegistrationQuestion) => a.order_index - b.order_index));
     } catch (error) {
+      console.error('Error fetching questions:', error);
       toast({
         title: "Error",
         description: "Failed to fetch registration questions",
@@ -58,15 +64,34 @@ const RegistrationQuestionsManager: React.FC = () => {
   };
 
   const saveQuestions = (updatedQuestions: RegistrationQuestion[]) => {
-    localStorage.setItem('registrationQuestions', JSON.stringify(updatedQuestions));
-    setQuestions(updatedQuestions);
+    try {
+      localStorage.setItem('registrationQuestions', JSON.stringify(updatedQuestions));
+      setQuestions(updatedQuestions.sort((a, b) => a.order_index - b.order_index));
+    } catch (error) {
+      console.error('Error saving questions:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save questions",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleAddQuestion = () => {
-    if (!questionForm.question_key || !questionForm.question_text) {
+    if (!questionForm.question_key.trim() || !questionForm.question_text.trim()) {
       toast({
         title: "Invalid Input",
-        description: "Please fill all required fields.",
+        description: "Question key and text are required.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check for duplicate question key
+    if (questions.some(q => q.question_key === questionForm.question_key)) {
+      toast({
+        title: "Duplicate Key",
+        description: "A question with this key already exists.",
         variant: "destructive"
       });
       return;
@@ -86,6 +111,7 @@ const RegistrationQuestionsManager: React.FC = () => {
       const updatedQuestions = [...questions, newQuestion];
       saveQuestions(updatedQuestions);
       
+      // Reset form
       setQuestionForm({
         question_key: '',
         question_text: '',
@@ -94,13 +120,18 @@ const RegistrationQuestionsManager: React.FC = () => {
         required: true,
         conditional_parent: 'none',
         conditional_value: '',
+        placeholder: '',
+        help_text: '',
       });
+
+      setIsAddDialogOpen(false);
 
       toast({
         title: "Question Added",
         description: "Registration question has been added successfully.",
       });
     } catch (error) {
+      console.error('Error adding question:', error);
       toast({
         title: "Error",
         description: "Failed to add question",
@@ -121,12 +152,14 @@ const RegistrationQuestionsManager: React.FC = () => {
       );
       saveQuestions(updatedQuestions);
       setEditingQuestion(null);
+      setIsEditDialogOpen(false);
 
       toast({
         title: "Question Updated",
         description: "Registration question has been updated successfully.",
       });
     } catch (error) {
+      console.error('Error updating question:', error);
       toast({
         title: "Error",
         description: "Failed to update question",
@@ -148,6 +181,7 @@ const RegistrationQuestionsManager: React.FC = () => {
         description: "Registration question has been deleted successfully.",
       });
     } catch (error) {
+      console.error('Error deleting question:', error);
       toast({
         title: "Error",
         description: "Failed to delete question",
@@ -158,216 +192,214 @@ const RegistrationQuestionsManager: React.FC = () => {
     }
   };
 
+  const moveQuestion = (questionId: string, direction: 'up' | 'down') => {
+    const currentIndex = questions.findIndex(q => q.id === questionId);
+    if (currentIndex === -1) return;
+
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (newIndex < 0 || newIndex >= questions.length) return;
+
+    const updatedQuestions = [...questions];
+    [updatedQuestions[currentIndex], updatedQuestions[newIndex]] = 
+    [updatedQuestions[newIndex], updatedQuestions[currentIndex]];
+
+    // Update order indices
+    updatedQuestions.forEach((question, index) => {
+      question.order_index = index + 1;
+    });
+
+    saveQuestions(updatedQuestions);
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex justify-between items-center">
-          Registration Questions Manager
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Question
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Add New Question</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <Input
-                  placeholder="Question Key (e.g., full_name, emirate)"
-                  value={questionForm.question_key}
-                  onChange={(e) => setQuestionForm({ ...questionForm, question_key: e.target.value })}
-                />
-                <Input
-                  placeholder="Question Text"
-                  value={questionForm.question_text}
-                  onChange={(e) => setQuestionForm({ ...questionForm, question_text: e.target.value })}
-                />
-                <Select
-                  value={questionForm.field_type}
-                  onValueChange={(value: FieldType) => setQuestionForm({ ...questionForm, field_type: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="text">Text</SelectItem>
-                    <SelectItem value="textarea">Textarea</SelectItem>
-                    <SelectItem value="select">Select</SelectItem>
-                    <SelectItem value="checkbox">Checkbox</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                {questionForm.field_type === 'select' && (
-                  <Textarea
-                    placeholder="Options (one per line)"
-                    value={questionForm.options.join('\n')}
-                    onChange={(e) => setQuestionForm({ 
-                      ...questionForm, 
-                      options: e.target.value.split('\n').filter(Boolean) 
-                    })}
-                  />
-                )}
-
-                <div className="space-y-2">
-                  <h4 className="font-medium">Conditional Logic (Optional)</h4>
-                  <Select
-                    value={questionForm.conditional_parent}
-                    onValueChange={(value) => setQuestionForm({ ...questionForm, conditional_parent: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Show only if this field..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No condition</SelectItem>
-                      {questions.filter(q => q.field_type === 'select').map(q => (
-                        <SelectItem key={q.id} value={q.question_key}>
-                          {q.question_text}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  
-                  {questionForm.conditional_parent && (
-                    <Input
-                      placeholder="...equals this value"
-                      value={questionForm.conditional_value}
-                      onChange={(e) => setQuestionForm({ ...questionForm, conditional_value: e.target.value })}
-                    />
-                  )}
-                </div>
-
-                <Button onClick={handleAddQuestion} disabled={loading} className="w-full">
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex justify-between items-center">
+            <span>Registration Questions Manager</span>
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
                   Add Question
                 </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Order</TableHead>
-              <TableHead>Key</TableHead>
-              <TableHead>Question</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Required</TableHead>
-              <TableHead>Conditions</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {questions.map((question) => (
-              <TableRow key={question.id}>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <GripVertical className="h-4 w-4 text-gray-400" />
-                    {question.order_index}
-                  </div>
-                </TableCell>
-                <TableCell className="font-mono text-sm">{question.question_key}</TableCell>
-                <TableCell className="max-w-xs truncate">{question.question_text}</TableCell>
-                <TableCell>
-                  <Badge variant="outline">{question.field_type}</Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={question.required ? "default" : "secondary"}>
-                    {question.required ? "Required" : "Optional"}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {question.conditional_parent && (
-                    <Badge variant="outline" className="text-xs">
-                      If {question.conditional_parent} = {question.conditional_value}
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <div className="flex space-x-2">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => setEditingQuestion(question)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-2xl">
-                        <DialogHeader>
-                          <DialogTitle>Edit Question</DialogTitle>
-                        </DialogHeader>
-                        {editingQuestion && (
-                          <div className="space-y-4">
-                            <Input
-                              value={editingQuestion.question_text}
-                              onChange={(e) => setEditingQuestion({ 
-                                ...editingQuestion, 
-                                question_text: e.target.value 
-                              })}
-                            />
-                            <Select
-                              value={editingQuestion.field_type}
-                              onValueChange={(value: FieldType) => setEditingQuestion({ 
-                                ...editingQuestion, 
-                                field_type: value 
-                              })}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="text">Text</SelectItem>
-                                <SelectItem value="textarea">Textarea</SelectItem>
-                                <SelectItem value="select">Select</SelectItem>
-                                <SelectItem value="checkbox">Checkbox</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            
-                            {editingQuestion.field_type === 'select' && (
-                              <Textarea
-                                placeholder="Options (one per line)"
-                                value={editingQuestion.options?.join('\n') || ''}
-                                onChange={(e) => setEditingQuestion({ 
-                                  ...editingQuestion, 
-                                  options: e.target.value.split('\n').filter(Boolean) 
-                                })}
-                              />
-                            )}
-                            
-                            <Button onClick={handleUpdateQuestion} className="w-full">
-                              Update Question
-                            </Button>
-                          </div>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Add New Registration Question</DialogTitle>
+                </DialogHeader>
+                <QuestionFormFields
+                  questionForm={questionForm}
+                  setQuestionForm={setQuestionForm}
+                  questions={questions}
+                />
+                <div className="flex justify-end space-x-2 pt-6">
+                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleAddQuestion} disabled={loading}>
+                    {loading ? 'Adding...' : 'Add Question'}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {questions.length === 0 ? (
+            <div className="text-center py-12">
+              <Eye className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No questions configured</h3>
+              <p className="text-gray-500 mb-6">
+                Add your first registration question to customize the user registration form.
+              </p>
+              <Button onClick={() => setIsAddDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add First Question
+              </Button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-20">Order</TableHead>
+                    <TableHead>Key</TableHead>
+                    <TableHead>Question</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Required</TableHead>
+                    <TableHead>Conditions</TableHead>
+                    <TableHead className="w-32">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {questions.map((question, index) => (
+                    <TableRow key={question.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <GripVertical className="h-4 w-4 text-gray-400" />
+                          <span className="font-medium">{question.order_index}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <code className="text-sm bg-gray-100 px-2 py-1 rounded">
+                          {question.question_key}
+                        </code>
+                      </TableCell>
+                      <TableCell className="max-w-xs">
+                        <div>
+                          <p className="font-medium">{question.question_text}</p>
+                          {question.placeholder && (
+                            <p className="text-sm text-gray-500">
+                              Placeholder: {question.placeholder}
+                            </p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="capitalize">
+                          {question.field_type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={question.required ? "default" : "secondary"}>
+                          {question.required ? "Required" : "Optional"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {question.conditional_parent && (
+                          <Badge variant="outline" className="text-xs">
+                            If {question.conditional_parent} = {question.conditional_value}
+                          </Badge>
                         )}
-                      </DialogContent>
-                    </Dialog>
-                    <Button 
-                      variant="destructive" 
-                      size="sm" 
-                      onClick={() => handleDeleteQuestion(question.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        
-        {questions.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            No registration questions configured. Add your first question to get started.
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => moveQuestion(question.id, 'up')}
+                            disabled={index === 0}
+                          >
+                            ↑
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => moveQuestion(question.id, 'down')}
+                            disabled={index === questions.length - 1}
+                          >
+                            ↓
+                          </Button>
+                          <Dialog open={isEditDialogOpen && editingQuestion?.id === question.id} 
+                                 onOpenChange={setIsEditDialogOpen}>
+                            <DialogTrigger asChild>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => setEditingQuestion(question)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                              <DialogHeader>
+                                <DialogTitle>Edit Question</DialogTitle>
+                              </DialogHeader>
+                              {editingQuestion && (
+                                <>
+                                  <QuestionFormFields
+                                    questionForm={{
+                                      question_key: editingQuestion.question_key,
+                                      question_text: editingQuestion.question_text,
+                                      field_type: editingQuestion.field_type,
+                                      options: editingQuestion.options || [],
+                                      required: editingQuestion.required,
+                                      conditional_parent: editingQuestion.conditional_parent || 'none',
+                                      conditional_value: editingQuestion.conditional_value || '',
+                                      placeholder: editingQuestion.placeholder || '',
+                                      help_text: editingQuestion.help_text || '',
+                                    }}
+                                    setQuestionForm={(form) => setEditingQuestion({
+                                      ...editingQuestion,
+                                      ...form,
+                                      conditional_parent: form.conditional_parent === 'none' ? undefined : form.conditional_parent,
+                                    })}
+                                    questions={questions}
+                                  />
+                                  <div className="flex justify-end space-x-2 pt-6">
+                                    <Button variant="outline" onClick={() => {
+                                      setIsEditDialogOpen(false);
+                                      setEditingQuestion(null);
+                                    }}>
+                                      Cancel
+                                    </Button>
+                                    <Button onClick={handleUpdateQuestion} disabled={loading}>
+                                      {loading ? 'Updating...' : 'Update Question'}
+                                    </Button>
+                                  </div>
+                                </>
+                              )}
+                            </DialogContent>
+                          </Dialog>
+                          <Button 
+                            variant="destructive" 
+                            size="sm" 
+                            onClick={() => handleDeleteQuestion(question.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

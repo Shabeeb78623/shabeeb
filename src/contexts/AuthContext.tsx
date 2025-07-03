@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, YearlyData } from '../types/user';
 
@@ -17,6 +16,8 @@ interface AuthContextType {
   switchYear: (year: number) => void;
   createNewYear: () => void;
   getCurrentYearUsers: () => User[];
+  updateCurrentUser: (updatedUser: User) => void;
+  submitPayment: (amount: number, remarks: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -275,6 +276,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('users', JSON.stringify([]));
   };
 
+  const updateCurrentUser = (updatedUser: User) => {
+    setCurrentUser(updatedUser);
+    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+    
+    // Also update in yearly data
+    const yearlyData: YearlyData[] = JSON.parse(localStorage.getItem('yearlyData') || '[]');
+    const updatedYearlyData = yearlyData.map(data => ({
+      ...data,
+      users: data.users.map(user => user.id === updatedUser.id ? updatedUser : user)
+    }));
+    localStorage.setItem('yearlyData', JSON.stringify(updatedYearlyData));
+  };
+
+  const submitPayment = async (amount: number, remarks: string): Promise<boolean> => {
+    if (!currentUser) return false;
+    
+    try {
+      const updatedUser = {
+        ...currentUser,
+        paymentSubmission: {
+          submitted: true,
+          submissionDate: new Date().toISOString(),
+          approvalStatus: 'pending' as const,
+          userRemarks: remarks,
+          amount: amount
+        }
+      };
+      
+      updateCurrentUser(updatedUser);
+      return true;
+    } catch (error) {
+      console.error('Payment submission error:', error);
+      return false;
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       currentUser,
@@ -291,6 +328,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       switchYear,
       createNewYear,
       getCurrentYearUsers,
+      updateCurrentUser,
+      submitPayment,
     }}>
       {children}
     </AuthContext.Provider>

@@ -19,6 +19,7 @@ import NotificationManager from './NotificationManager';
 import CustomAdminManager from './CustomAdminManager';
 import CSVImport from './CSVImport';
 import RegistrationQuestionsManager from './RegistrationQuestionsManager';
+import NewYearManager from './NewYearManager';
 import * as XLSX from 'xlsx';
 import { Search } from 'lucide-react';
 
@@ -371,6 +372,21 @@ const AdminDashboard: React.FC = () => {
     });
   };
 
+  const handleNewYear = (year: number) => {
+    switchYear(year);
+    loadUsers();
+  };
+
+  const handleUpdateUsers = (updatedUsers: User[]) => {
+    // Update yearly data for all users
+    const yearlyData = JSON.parse(localStorage.getItem('yearlyData') || '[]');
+    const updatedYearlyData = yearlyData.map((data: any) => {
+      const yearUsers = updatedUsers.filter(user => user.registrationYear === data.year);
+      return { ...data, users: yearUsers };
+    });
+    localStorage.setItem('yearlyData', JSON.stringify(updatedYearlyData));
+  };
+
   const visibleUsers = getVisibleUsers();
   const stats = {
     total: visibleUsers.length,
@@ -389,10 +405,10 @@ const AdminDashboard: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
+          <div className="flex justify-between items-center py-6">
             <div>
               <h1 className="text-2xl font-bold text-gray-800">Admin Dashboard</h1>
-              <div className="flex items-center gap-4 mt-2">
+              <div className="flex items-center gap-4 mt-3">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-600">Year:</span>
                   <Select value={currentYear.toString()} onValueChange={(year) => switchYear(parseInt(year))}>
@@ -405,36 +421,13 @@ const AdminDashboard: React.FC = () => {
                       ))}
                     </SelectContent>
                   </Select>
-                  {isMasterAdmin && (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          New Year
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Create New Year</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to create a new year? This will start a fresh registration period.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={createNewYear}>
-                            Create New Year
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  )}
                 </div>
                 {currentUser?.role === 'mandalam_admin' && (
                   <p className="text-sm text-gray-600">Mandalam: {currentUser.mandalamAccess}</p>
                 )}
               </div>
             </div>
-            <div className="flex space-x-2">
+            <div className="flex space-x-3">
               {hasPermission('canViewUsers') && (
                 <Button onClick={exportToExcel} variant="outline">
                   Export to Excel
@@ -477,456 +470,472 @@ const AdminDashboard: React.FC = () => {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
-              <div className="text-sm text-gray-600">Total Users</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-green-600">{stats.newRegistrations}</div>
-              <div className="text-sm text-gray-600">New</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-orange-600">{stats.reregistrations}</div>
-              <div className="text-sm text-gray-600">Re-registrations</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
-              <div className="text-sm text-gray-600">Pending</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
-              <div className="text-sm text-gray-600">Approved</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
-              <div className="text-sm text-gray-600">Rejected</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-purple-600">{stats.paid}</div>
-              <div className="text-sm text-gray-600">Paid</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-indigo-600">{stats.admins}</div>
-              <div className="text-sm text-gray-600">Admins</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-emerald-600">AED {stats.totalPaymentAmount}</div>
-              <div className="text-sm text-gray-600">Collected</div>
-            </CardContent>
-          </Card>
-        </div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="space-y-8">
+          {/* Statistics Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
+                <div className="text-sm text-gray-600">Total Users</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold text-green-600">{stats.newRegistrations}</div>
+                <div className="text-sm text-gray-600">New</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold text-orange-600">{stats.reregistrations}</div>
+                <div className="text-sm text-gray-600">Re-registrations</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+                <div className="text-sm text-gray-600">Pending</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
+                <div className="text-sm text-gray-600">Approved</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
+                <div className="text-sm text-gray-600">Rejected</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold text-purple-600">{stats.paid}</div>
+                <div className="text-sm text-gray-600">Paid</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold text-indigo-600">{stats.admins}</div>
+                <div className="text-sm text-gray-600">Admins</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold text-emerald-600">AED {stats.totalPaymentAmount}</div>
+                <div className="text-sm text-gray-600">Collected</div>
+              </CardContent>
+            </Card>
+          </div>
 
-        <Tabs defaultValue="approvals" className="space-y-8">
-          <TabsList className="grid grid-cols-10 w-full">
-            {hasPermission('canApproveUsers') && <TabsTrigger value="approvals">User Approvals</TabsTrigger>}
-            {hasPermission('canViewUsers') && <TabsTrigger value="users">Users Data</TabsTrigger>}
-            {hasPermission('canViewUsers') && <TabsTrigger value="overview">Users Overview</TabsTrigger>}
-            {hasPermission('canManagePayments') && <TabsTrigger value="payments">Payment Management</TabsTrigger>}
-            {hasPermission('canManagePayments') && <TabsTrigger value="payment-submissions">Payment Submissions</TabsTrigger>}
-            {hasPermission('canManageBenefits') && <TabsTrigger value="benefits">Benefit Management</TabsTrigger>}
-            {hasPermission('canSendNotifications') && <TabsTrigger value="notifications">Send Notifications</TabsTrigger>}
-            {(isMasterAdmin || currentUser?.role === 'admin') && <TabsTrigger value="import">Import Users</TabsTrigger>}
-            {isMasterAdmin && <TabsTrigger value="admin-assignment">Admin Assignment</TabsTrigger>}
-            {isMasterAdmin && <TabsTrigger value="questions">Registration Questions</TabsTrigger>}
-          </TabsList>
+          <Tabs defaultValue="approvals" className="space-y-6">
+            <TabsList className="grid grid-cols-11 w-full">
+              {hasPermission('canApproveUsers') && <TabsTrigger value="approvals">User Approvals</TabsTrigger>}
+              {hasPermission('canViewUsers') && <TabsTrigger value="users">Users Data</TabsTrigger>}
+              {hasPermission('canViewUsers') && <TabsTrigger value="overview">Users Overview</TabsTrigger>}
+              {hasPermission('canManagePayments') && <TabsTrigger value="payments">Payment Management</TabsTrigger>}
+              {hasPermission('canManagePayments') && <TabsTrigger value="payment-submissions">Payment Submissions</TabsTrigger>}
+              {hasPermission('canManageBenefits') && <TabsTrigger value="benefits">Benefit Management</TabsTrigger>}
+              {hasPermission('canSendNotifications') && <TabsTrigger value="notifications">Send Notifications</TabsTrigger>}
+              {(isMasterAdmin || currentUser?.role === 'admin') && <TabsTrigger value="import">Import Users</TabsTrigger>}
+              {isMasterAdmin && <TabsTrigger value="admin-assignment">Admin Assignment</TabsTrigger>}
+              {isMasterAdmin && <TabsTrigger value="questions">Registration Questions</TabsTrigger>}
+              {isMasterAdmin && <TabsTrigger value="new-year">New Year Management</TabsTrigger>}
+            </TabsList>
 
-          {/* User Approvals Tab */}
-          {hasPermission('canApproveUsers') && (
-            <TabsContent value="approvals" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Pending Approvals</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {visibleUsers.filter(user => user.status === 'pending').map(user => (
-                      <div key={user.id} className="border rounded-lg p-4">
-                        <div className="flex justify-between items-start">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-semibold">{user.fullName}</h3>
-                              {user.isReregistration && (
-                                <Badge className="bg-orange-500">Re-registration</Badge>
+            {/* User Approvals Tab */}
+            {hasPermission('canApproveUsers') && (
+              <TabsContent value="approvals" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Pending Approvals</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {visibleUsers.filter(user => user.status === 'pending').map(user => (
+                        <div key={user.id} className="border rounded-lg p-4">
+                          <div className="flex justify-between items-start">
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-semibold">{user.fullName}</h3>
+                                {user.isReregistration && (
+                                  <Badge className="bg-orange-500">Re-registration</Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-600">{user.email}</p>
+                              <p className="text-sm text-gray-600">Phone: {user.mobileNo}</p>
+                              <p className="text-sm text-gray-600">Emirates ID: {user.emiratesId}</p>
+                              <p className="text-sm text-gray-600">Emirate: {user.emirate}</p>
+                              <p className="text-sm text-gray-600">Mandalam: {user.mandalam}</p>
+                              <p className="text-sm text-gray-600">
+                                Registered: {new Date(user.registrationDate).toLocaleDateString()} at {new Date(user.registrationDate).toLocaleTimeString()}
+                              </p>
+                            </div>
+                            <div className="flex space-x-2">
+                              <Button
+                                onClick={() => approveUser(user.id)}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                onClick={() => rejectUser(user.id)}
+                                variant="destructive"
+                              >
+                                Reject
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {visibleUsers.filter(user => user.status === 'pending').length === 0 && (
+                        <p className="text-gray-500 text-center py-8">No pending approvals</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
+
+            {/* Users Data Tab */}
+            {hasPermission('canViewUsers') && (
+              <TabsContent value="users" className="space-y-6">
+                <UsersDataTable 
+                  users={visibleUsers}
+                  onUpdateUser={updateUser}
+                  onDeleteUser={deleteUser}
+                  isMasterAdmin={isMasterAdmin}
+                  userRole={currentUser?.role || 'user'}
+                  userMandalam={currentUser?.mandalamAccess}
+                />
+              </TabsContent>
+            )}
+
+            {/* Users Overview Tab */}
+            {hasPermission('canViewUsers') && (
+              <TabsContent value="overview" className="space-y-6">
+                <UsersOverview users={visibleUsers} />
+              </TabsContent>
+            )}
+
+            {/* Payment Management Tab */}
+            {hasPermission('canManagePayments') && (
+              <TabsContent value="payments" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Payment Management</CardTitle>
+                    <div className="mt-4">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                        <Input
+                          placeholder="Search by name, reg no, phone, or Emirates ID..."
+                          className="pl-10"
+                          onChange={(e) => {
+                            const searchTerm = e.target.value.toLowerCase();
+                            // You can implement search filtering here
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {visibleUsers.filter(user => user.status === 'approved').map(user => (
+                        <div key={user.id} className="border rounded-lg p-4">
+                          <div className="flex justify-between items-start">
+                            <div className="space-y-2">
+                              <div className="flex items-center space-x-2">
+                                <h3 className="font-semibold">{user.fullName}</h3>
+                                <Badge className={user.paymentStatus ? 'bg-green-500' : 'bg-gray-500'}>
+                                  {user.paymentStatus ? 'Paid' : 'Unpaid'}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-gray-600">{user.email}</p>
+                              {user.paymentAmount && (
+                                <p className="text-sm font-semibold text-green-600">Amount: AED {user.paymentAmount}</p>
+                              )}
+                              {user.paymentRemarks && (
+                                <p className="text-sm text-blue-600">Remarks: {user.paymentRemarks}</p>
                               )}
                             </div>
-                            <p className="text-sm text-gray-600">{user.email}</p>
-                            <p className="text-sm text-gray-600">Phone: {user.mobileNo}</p>
-                            <p className="text-sm text-gray-600">Emirates ID: {user.emiratesId}</p>
-                            <p className="text-sm text-gray-600">Emirate: {user.emirate}</p>
-                            <p className="text-sm text-gray-600">Mandalam: {user.mandalam}</p>
-                            <p className="text-sm text-gray-600">
-                              Registered: {new Date(user.registrationDate).toLocaleDateString()} at {new Date(user.registrationDate).toLocaleTimeString()}
-                            </p>
-                          </div>
-                          <div className="flex space-x-2">
-                            <Button
-                              onClick={() => approveUser(user.id)}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              Approve
-                            </Button>
-                            <Button
-                              onClick={() => rejectUser(user.id)}
-                              variant="destructive"
-                            >
-                              Reject
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    {visibleUsers.filter(user => user.status === 'pending').length === 0 && (
-                      <p className="text-gray-500 text-center py-8">No pending approvals</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          )}
-
-          {/* Users Data Tab */}
-          {hasPermission('canViewUsers') && (
-            <TabsContent value="users" className="space-y-6">
-              <UsersDataTable 
-                users={visibleUsers}
-                onUpdateUser={updateUser}
-                onDeleteUser={deleteUser}
-                isMasterAdmin={isMasterAdmin}
-                userRole={currentUser?.role || 'user'}
-                userMandalam={currentUser?.mandalamAccess}
-              />
-            </TabsContent>
-          )}
-
-          {/* Users Overview Tab */}
-          {hasPermission('canViewUsers') && (
-            <TabsContent value="overview" className="space-y-6">
-              <UsersOverview users={visibleUsers} />
-            </TabsContent>
-          )}
-
-          {/* Payment Management Tab */}
-          {hasPermission('canManagePayments') && (
-            <TabsContent value="payments" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Payment Management</CardTitle>
-                  <div className="mt-4">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                      <Input
-                        placeholder="Search by name, reg no, phone, or Emirates ID..."
-                        className="pl-10"
-                        onChange={(e) => {
-                          const searchTerm = e.target.value.toLowerCase();
-                          // You can implement search filtering here
-                        }}
-                      />
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {visibleUsers.filter(user => user.status === 'approved').map(user => (
-                      <div key={user.id} className="border rounded-lg p-4">
-                        <div className="flex justify-between items-start">
-                          <div className="space-y-2">
-                            <div className="flex items-center space-x-2">
-                              <h3 className="font-semibold">{user.fullName}</h3>
-                              <Badge className={user.paymentStatus ? 'bg-green-500' : 'bg-gray-500'}>
-                                {user.paymentStatus ? 'Paid' : 'Unpaid'}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-gray-600">{user.email}</p>
-                            {user.paymentAmount && (
-                              <p className="text-sm font-semibold text-green-600">Amount: AED {user.paymentAmount}</p>
-                            )}
-                            {user.paymentRemarks && (
-                              <p className="text-sm text-blue-600">Remarks: {user.paymentRemarks}</p>
-                            )}
-                          </div>
-                          <div className="flex items-center space-x-4">
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button variant="outline">Update Payment</Button>
-                              </DialogTrigger>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>Update Payment Status</DialogTitle>
-                                </DialogHeader>
-                                <div className="space-y-4">
-                                  <Input
-                                    type="number"
-                                    placeholder="Payment Amount (AED)"
-                                    value={paymentAmount}
-                                    onChange={(e) => setPaymentAmount(Number(e.target.value))}
-                                  />
-                                  <Textarea
-                                    placeholder="Payment remarks (optional)"
-                                    value={paymentRemarks}
-                                    onChange={(e) => setPaymentRemarks(e.target.value)}
-                                  />
-                                  <div className="flex items-center space-x-2">
-                                    <Checkbox
-                                      checked={user.paymentStatus}
-                                      onCheckedChange={() => {
-                                        togglePayment(user.id, paymentAmount, paymentRemarks);
-                                        setPaymentAmount(0);
-                                        setPaymentRemarks('');
-                                      }}
+                            <div className="flex items-center space-x-4">
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button variant="outline">Update Payment</Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>Update Payment Status</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="space-y-4">
+                                    <Input
+                                      type="number"
+                                      placeholder="Payment Amount (AED)"
+                                      value={paymentAmount}
+                                      onChange={(e) => setPaymentAmount(Number(e.target.value))}
                                     />
-                                    <label className="text-sm">Mark as Paid</label>
-                                  </div>
-                                </div>
-                              </DialogContent>
-                            </Dialog>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  {/* Total Amount Display */}
-                  <div className="mt-6 text-center">
-                    <div className="text-3xl font-bold text-green-600">
-                      Total Collected: AED {stats.totalPaymentAmount}
-                    </div>
-                    <p className="text-gray-600">From {stats.paid} paid members</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          )}
-
-          {/* Payment Submissions Tab */}
-          {hasPermission('canManagePayments') && (
-            <TabsContent value="payment-submissions" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Payment Submissions</CardTitle>
-                  <div className="mt-4">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                      <Input
-                        placeholder="Search by name, reg no, phone, or Emirates ID..."
-                        className="pl-10"
-                        onChange={(e) => {
-                          const searchTerm = e.target.value.toLowerCase();
-                          // You can implement search filtering here
-                        }}
-                      />
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {visibleUsers.filter(user => user.paymentSubmission?.submitted).map(user => (
-                      <div key={user.id} className="border rounded-lg p-4">
-                        <div className="flex justify-between items-start">
-                          <div className="space-y-2">
-                            <div className="flex items-center space-x-2">
-                              <h3 className="font-semibold">{user.fullName}</h3>
-                              <Badge className={
-                                user.paymentSubmission?.approvalStatus === 'approved' ? 'bg-green-500' :
-                                user.paymentSubmission?.approvalStatus === 'declined' ? 'bg-red-500' : 'bg-yellow-500'
-                              }>
-                                {user.paymentSubmission?.approvalStatus}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-gray-600">{user.email}</p>
-                            <p className="text-sm text-gray-600">
-                              Submitted: {new Date(user.paymentSubmission?.submissionDate!).toLocaleDateString()}
-                            </p>
-                            {user.paymentSubmission?.amount && (
-                              <p className="text-sm font-semibold text-green-600">
-                                Amount: AED {user.paymentSubmission.amount}
-                              </p>
-                            )}
-                            {user.paymentSubmission?.userRemarks && (
-                              <div className="bg-gray-50 p-2 rounded">
-                                <p className="text-sm font-medium text-gray-700">User Remarks:</p>
-                                <p className="text-sm text-gray-600">{user.paymentSubmission.userRemarks}</p>
-                              </div>
-                            )}
-                            {user.paymentSubmission?.adminRemarks && (
-                              <p className="text-sm text-blue-600">
-                                Admin Remarks: {user.paymentSubmission.adminRemarks}
-                              </p>
-                            )}
-                          </div>
-                          
-                          <div className="flex space-x-2">
-                            {user.paymentSubmission?.approvalStatus === 'pending' ? (
-                              <>
-                                <Dialog>
-                                  <DialogTrigger asChild>
-                                    <Button className="bg-green-600 hover:bg-green-700">
-                                      Approve
-                                    </Button>
-                                  </DialogTrigger>
-                                  <DialogContent>
-                                    <DialogHeader>
-                                      <DialogTitle>Approve Payment</DialogTitle>
-                                    </DialogHeader>
-                                    <div className="space-y-4">
-                                      <Textarea
-                                        placeholder="Admin remarks (optional)"
-                                        value={paymentRemarks}
-                                        onChange={(e) => setPaymentRemarks(e.target.value)}
-                                      />
-                                      <Button 
-                                        onClick={() => {
-                                          approvePaymentSubmission(user.id, paymentRemarks);
+                                    <Textarea
+                                      placeholder="Payment remarks (optional)"
+                                      value={paymentRemarks}
+                                      onChange={(e) => setPaymentRemarks(e.target.value)}
+                                    />
+                                    <div className="flex items-center space-x-2">
+                                      <Checkbox
+                                        checked={user.paymentStatus}
+                                        onCheckedChange={() => {
+                                          togglePayment(user.id, paymentAmount, paymentRemarks);
+                                          setPaymentAmount(0);
                                           setPaymentRemarks('');
                                         }}
-                                        className="w-full"
-                                      >
-                                        Approve Payment
-                                      </Button>
-                                    </div>
-                                  </DialogContent>
-                                </Dialog>
-                                
-                                <Dialog>
-                                  <DialogTrigger asChild>
-                                    <Button variant="destructive">
-                                      Decline
-                                    </Button>
-                                  </DialogTrigger>
-                                  <DialogContent>
-                                    <DialogHeader>
-                                      <DialogTitle>Decline Payment</DialogTitle>
-                                    </DialogHeader>
-                                    <div className="space-y-4">
-                                      <Textarea
-                                        placeholder="Reason for declining (required)"
-                                        value={paymentRemarks}
-                                        onChange={(e) => setPaymentRemarks(e.target.value)}
-                                        required
                                       />
-                                      <Button 
-                                        onClick={() => {
-                                          if (paymentRemarks.trim()) {
-                                            declinePaymentSubmission(user.id, paymentRemarks);
-                                            setPaymentRemarks('');
-                                          } else {
-                                            toast({
-                                              title: "Error",
-                                              description: "Please provide a reason for declining.",
-                                              variant: "destructive"
-                                            });
-                                          }
-                                        }}
-                                        variant="destructive"
-                                        className="w-full"
-                                      >
-                                        Decline Payment
-                                      </Button>
+                                      <label className="text-sm">Mark as Paid</label>
                                     </div>
-                                  </DialogContent>
-                                </Dialog>
-                              </>
-                            ) : (
-                              <Button 
-                                onClick={() => resetPaymentSubmission(user.id)}
-                                variant="outline"
-                              >
-                                Reset Submission
-                              </Button>
-                            )}
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                            </div>
                           </div>
                         </div>
+                      ))}
+                    </div>
+                    
+                    {/* Total Amount Display */}
+                    <div className="mt-6 text-center">
+                      <div className="text-3xl font-bold text-green-600">
+                        Total Collected: AED {stats.totalPaymentAmount}
                       </div>
-                    ))}
-                    {visibleUsers.filter(user => user.paymentSubmission?.submitted).length === 0 && (
-                      <p className="text-gray-500 text-center py-8">No payment submissions</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          )}
+                      <p className="text-gray-600">From {stats.paid} paid members</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
 
-          {/* Benefit Management Tab */}
-          {hasPermission('canManageBenefits') && (
-            <TabsContent value="benefits" className="space-y-6">
-              <EnhancedBenefitManager users={visibleUsers} onUpdateUser={updateUser} />
-            </TabsContent>
-          )}
+            {/* Payment Submissions Tab */}
+            {hasPermission('canManagePayments') && (
+              <TabsContent value="payment-submissions" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Payment Submissions</CardTitle>
+                    <div className="mt-4">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                        <Input
+                          placeholder="Search by name, reg no, phone, or Emirates ID..."
+                          className="pl-10"
+                          onChange={(e) => {
+                            const searchTerm = e.target.value.toLowerCase();
+                            // You can implement search filtering here
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {visibleUsers.filter(user => user.paymentSubmission?.submitted).map(user => (
+                        <div key={user.id} className="border rounded-lg p-4">
+                          <div className="flex justify-between items-start">
+                            <div className="space-y-2">
+                              <div className="flex items-center space-x-2">
+                                <h3 className="font-semibold">{user.fullName}</h3>
+                                <Badge className={
+                                  user.paymentSubmission?.approvalStatus === 'approved' ? 'bg-green-500' :
+                                  user.paymentSubmission?.approvalStatus === 'declined' ? 'bg-red-500' : 'bg-yellow-500'
+                                }>
+                                  {user.paymentSubmission?.approvalStatus}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-gray-600">{user.email}</p>
+                              <p className="text-sm text-gray-600">
+                                Submitted: {new Date(user.paymentSubmission?.submissionDate!).toLocaleDateString()}
+                              </p>
+                              {user.paymentSubmission?.amount && (
+                                <p className="text-sm font-semibold text-green-600">
+                                  Amount: AED {user.paymentSubmission.amount}
+                                </p>
+                              )}
+                              {user.paymentSubmission?.userRemarks && (
+                                <div className="bg-gray-50 p-2 rounded">
+                                  <p className="text-sm font-medium text-gray-700">User Remarks:</p>
+                                  <p className="text-sm text-gray-600">{user.paymentSubmission.userRemarks}</p>
+                                </div>
+                              )}
+                              {user.paymentSubmission?.adminRemarks && (
+                                <p className="text-sm text-blue-600">
+                                  Admin Remarks: {user.paymentSubmission.adminRemarks}
+                                </p>
+                              )}
+                            </div>
+                            
+                            <div className="flex space-x-2">
+                              {user.paymentSubmission?.approvalStatus === 'pending' ? (
+                                <>
+                                  <Dialog>
+                                    <DialogTrigger asChild>
+                                      <Button className="bg-green-600 hover:bg-green-700">
+                                        Approve
+                                      </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                      <DialogHeader>
+                                        <DialogTitle>Approve Payment</DialogTitle>
+                                      </DialogHeader>
+                                      <div className="space-y-4">
+                                        <Textarea
+                                          placeholder="Admin remarks (optional)"
+                                          value={paymentRemarks}
+                                          onChange={(e) => setPaymentRemarks(e.target.value)}
+                                        />
+                                        <Button 
+                                          onClick={() => {
+                                            approvePaymentSubmission(user.id, paymentRemarks);
+                                            setPaymentRemarks('');
+                                          }}
+                                          className="w-full"
+                                        >
+                                          Approve Payment
+                                        </Button>
+                                      </div>
+                                    </DialogContent>
+                                  </Dialog>
+                                  
+                                  <Dialog>
+                                    <DialogTrigger asChild>
+                                      <Button variant="destructive">
+                                        Decline
+                                      </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                      <DialogHeader>
+                                        <DialogTitle>Decline Payment</DialogTitle>
+                                      </DialogHeader>
+                                      <div className="space-y-4">
+                                        <Textarea
+                                          placeholder="Reason for declining (required)"
+                                          value={paymentRemarks}
+                                          onChange={(e) => setPaymentRemarks(e.target.value)}
+                                          required
+                                        />
+                                        <Button 
+                                          onClick={() => {
+                                            if (paymentRemarks.trim()) {
+                                              declinePaymentSubmission(user.id, paymentRemarks);
+                                              setPaymentRemarks('');
+                                            } else {
+                                              toast({
+                                                title: "Error",
+                                                description: "Please provide a reason for declining.",
+                                                variant: "destructive"
+                                              });
+                                            }
+                                          }}
+                                          variant="destructive"
+                                          className="w-full"
+                                        >
+                                          Decline Payment
+                                        </Button>
+                                      </div>
+                                    </DialogContent>
+                                  </Dialog>
+                                </>
+                              ) : (
+                                <Button 
+                                  onClick={() => resetPaymentSubmission(user.id)}
+                                  variant="outline"
+                                >
+                                  Reset Submission
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {visibleUsers.filter(user => user.paymentSubmission?.submitted).length === 0 && (
+                        <p className="text-gray-500 text-center py-8">No payment submissions</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
 
-          {/* Notifications Tab */}
-          {hasPermission('canSendNotifications') && (
-            <TabsContent value="notifications" className="space-y-6">
-              <NotificationManager 
-                users={visibleUsers}
-                onUpdateUser={updateUser}
-                currentAdminName={currentUser?.fullName || 'Admin'}
-              />
-            </TabsContent>
-          )}
+            {/* Benefit Management Tab */}
+            {hasPermission('canManageBenefits') && (
+              <TabsContent value="benefits" className="space-y-6">
+                <EnhancedBenefitManager users={visibleUsers} onUpdateUser={updateUser} />
+              </TabsContent>
+            )}
 
-          {/* Import Users Tab */}
-          {(isMasterAdmin || currentUser?.role === 'admin') && (
-            <TabsContent value="import" className="space-y-6">
-              <CSVImport onImportComplete={handleImportComplete} />
-            </TabsContent>
-          )}
+            {/* Notifications Tab */}
+            {hasPermission('canSendNotifications') && (
+              <TabsContent value="notifications" className="space-y-6">
+                <NotificationManager 
+                  users={visibleUsers}
+                  onUpdateUser={updateUser}
+                  currentAdminName={currentUser?.fullName || 'Admin'}
+                />
+              </TabsContent>
+            )}
 
-          {/* Admin Assignment Tab */}
-          {isMasterAdmin && (
-            <TabsContent value="admin-assignment" className="space-y-6">
-              <CustomAdminManager 
-                users={users}
-                onUpdateUser={updateUser}
-              />
-            </TabsContent>
-          )}
+            {/* Import Users Tab */}
+            {(isMasterAdmin || currentUser?.role === 'admin') && (
+              <TabsContent value="import" className="space-y-6">
+                <CSVImport onImportComplete={handleImportComplete} />
+              </TabsContent>
+            )}
 
-          {/* Registration Questions Tab */}
-          {isMasterAdmin && (
-            <TabsContent value="questions" className="space-y-6">
-              <RegistrationQuestionsManager />
-            </TabsContent>
-          )}
-        </Tabs>
+            {/* Admin Assignment Tab */}
+            {isMasterAdmin && (
+              <TabsContent value="admin-assignment" className="space-y-6">
+                <CustomAdminManager 
+                  users={users}
+                  onUpdateUser={updateUser}
+                />
+              </TabsContent>
+            )}
 
-        {/* Confirmation Dialog */}
-        <AlertDialog open={!!confirmAction} onOpenChange={() => setConfirmAction(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>{confirmAction?.title}</AlertDialogTitle>
-              <AlertDialogDescription>
-                {confirmAction?.description}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={executeConfirmedAction}>
-                Confirm
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+            {/* Registration Questions Tab */}
+            {isMasterAdmin && (
+              <TabsContent value="questions" className="space-y-6">
+                <RegistrationQuestionsManager />
+              </TabsContent>
+            )}
+
+            {/* New Year Management Tab */}
+            {isMasterAdmin && (
+              <TabsContent value="new-year" className="space-y-6">
+                <NewYearManager 
+                  users={users}
+                  onNewYear={handleNewYear}
+                  onUpdateUsers={handleUpdateUsers}
+                  currentYear={currentYear}
+                  availableYears={availableYears}
+                />
+              </TabsContent>
+            )}
+          </Tabs>
+
+          {/* Confirmation Dialog */}
+          <AlertDialog open={!!confirmAction} onOpenChange={() => setConfirmAction(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{confirmAction?.title}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {confirmAction?.description}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={executeConfirmedAction}>
+                  Confirm
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </main>
     </div>
   );

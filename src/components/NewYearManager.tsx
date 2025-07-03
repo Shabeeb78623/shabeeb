@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { User } from '../types/user';
+import { User, YearlyData } from '../types/user';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,66 +10,54 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { Calendar, Plus, Trash2, Users, AlertTriangle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-
-interface YearConfig {
-  id: string;
-  year: number;
-  is_active: boolean;
-  registration_fee: number;
-  created_at: string;
-}
 
 interface NewYearManagerProps {
   users: User[];
   onNewYear: (year: number) => void;
   onUpdateUsers: (users: User[]) => void;
+  currentYear: number;
+  availableYears: number[];
 }
 
-const NewYearManager: React.FC<NewYearManagerProps> = ({ users, onNewYear, onUpdateUsers }) => {
-  const [yearConfigs, setYearConfigs] = useState<YearConfig[]>([]);
+const NewYearManager: React.FC<NewYearManagerProps> = ({ 
+  users, 
+  onNewYear, 
+  onUpdateUsers,
+  currentYear,
+  availableYears 
+}) => {
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear() + 1);
-  const [registrationFee, setRegistrationFee] = useState<number>(0);
+  const [registrationFee, setRegistrationFee] = useState<number>(50);
   const [loading, setLoading] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
-
-  useEffect(() => {
-    fetchYearConfigs();
-  }, []);
-
-  const fetchYearConfigs = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('year_configs')
-        .select('*')
-        .order('year', { ascending: false });
-
-      if (error) throw error;
-      setYearConfigs(data || []);
-    } catch (error) {
-      console.error('Error fetching year configs:', error);
-    }
-  };
 
   const handleCreateNewYear = async () => {
     setLoading(true);
     try {
+      // Create new year data structure
+      const yearlyData: YearlyData[] = JSON.parse(localStorage.getItem('yearlyData') || '[]');
+      
+      // Check if year already exists
+      if (yearlyData.some(data => data.year === selectedYear)) {
+        throw new Error('Year already exists');
+      }
+
       // Deactivate all existing years
-      await supabase
-        .from('year_configs')
-        .update({ is_active: false })
-        .neq('id', '');
+      const updatedYearlyData = yearlyData.map(data => ({ ...data, isActive: false }));
+      
+      // Add new year
+      const newYearData: YearlyData = {
+        year: selectedYear,
+        users: [],
+        isActive: true
+      };
+      updatedYearlyData.push(newYearData);
 
-      // Create new year config
-      const { error } = await supabase
-        .from('year_configs')
-        .insert([{
-          year: selectedYear,
-          is_active: true,
-          registration_fee: registrationFee,
-        }]);
-
-      if (error) throw error;
+      // Update storage
+      localStorage.setItem('yearlyData', JSON.stringify(updatedYearlyData));
+      localStorage.setItem('currentYear', JSON.stringify(selectedYear));
+      localStorage.setItem('availableYears', JSON.stringify([...availableYears, selectedYear]));
 
       // Notify all users about new year registration
       const updatedUsers = users.map(user => ({
@@ -79,7 +67,7 @@ const NewYearManager: React.FC<NewYearManagerProps> = ({ users, onNewYear, onUpd
           {
             id: Date.now().toString() + Math.random(),
             title: 'New Year Registration Open',
-            message: `Registration for ${selectedYear} is now open. Click the renewal button to continue your membership for just AED 50.`,
+            message: `Registration for ${selectedYear} is now open. Click the renewal button to continue your membership for AED 50.`,
             date: new Date().toISOString(),
             read: false,
             fromAdmin: 'System',
@@ -89,16 +77,17 @@ const NewYearManager: React.FC<NewYearManagerProps> = ({ users, onNewYear, onUpd
 
       onUpdateUsers(updatedUsers);
       onNewYear(selectedYear);
-      await fetchYearConfigs();
+      setIsDialogOpen(false);
 
       toast({
         title: "New Year Created",
         description: `Registration for ${selectedYear} is now active. All users have been notified.`,
       });
     } catch (error) {
+      console.error('Error creating new year:', error);
       toast({
         title: "Error",
-        description: "Failed to create new year configuration",
+        description: error instanceof Error ? error.message : "Failed to create new year",
         variant: "destructive"
       });
     } finally {
@@ -106,33 +95,40 @@ const NewYearManager: React.FC<NewYearManagerProps> = ({ users, onNewYear, onUpd
     }
   };
 
-  const handleDeleteYear = async (yearId: string, year: number) => {
+  const handleDeleteYear = (year: number) => {
     try {
-      const { error } = await supabase
-        .from('year_configs')
-        .delete()
-        .eq('id', yearId);
+      if (year === currentYear) {
+        toast({
+          title: "Cannot Delete",
+          description: "Cannot delete the active year",
+          variant: "destructive"
+        });
+        return;
+      }
 
-      if (error) throw error;
+      const yearlyData: YearlyData[] = JSON.parse(localStorage.getItem('yearlyData') || '[]');
+      const updatedYearlyData = yearlyData.filter(data => data.year !== year);
+      const updatedAvailableYears = availableYears.filter(y => y !== year);
 
-      await fetchYearConfigs();
+      localStorage.setItem('yearlyData', JSON.stringify(updatedYearlyData));
+      localStorage.setItem('availableYears', JSON.stringify(updatedAvailableYears));
 
       toast({
         title: "Year Deleted",
-        description: `Year ${year} configuration has been deleted.`,
+        description: `Year ${year} has been deleted.`,
       });
     } catch (error) {
+      console.error('Error deleting year:', error);
       toast({
         title: "Error",
-        description: "Failed to delete year configuration",
+        description: "Failed to delete year",
         variant: "destructive"
       });
     }
   };
 
-  const activeYear = yearConfigs.find(config => config.is_active);
   const totalUsers = users.length;
-  const reregisteredUsers = users.filter(user => user.registrationYear === activeYear?.year).length;
+  const reregisteredUsers = users.filter(user => user.registrationYear === currentYear).length;
 
   return (
     <Card>
@@ -142,25 +138,23 @@ const NewYearManager: React.FC<NewYearManagerProps> = ({ users, onNewYear, onUpd
           New Year Management
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {activeYear && (
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="font-semibold text-blue-800">Active Year: {activeYear.year}</h3>
-                <p className="text-sm text-blue-600">Registration Fee: AED {activeYear.registration_fee}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold text-blue-700">{reregisteredUsers}/{totalUsers}</p>
-                <p className="text-sm text-blue-600">Users Re-registered</p>
-              </div>
+      <CardContent className="space-y-6">
+        <div className="bg-blue-50 p-4 rounded-lg">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="font-semibold text-blue-800">Active Year: {currentYear}</h3>
+              <p className="text-sm text-blue-600">Registration Fee: AED 50 (Renewal) / AED 60 (New)</p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-blue-700">{reregisteredUsers}/{totalUsers}</p>
+              <p className="text-sm text-blue-600">Users Registered</p>
             </div>
           </div>
-        )}
+        </div>
 
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold">Create New Year</h3>
-          <Dialog>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
@@ -182,16 +176,7 @@ const NewYearManager: React.FC<NewYearManagerProps> = ({ users, onNewYear, onUpd
                     max={new Date().getFullYear() + 10}
                   />
                 </div>
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Registration Fee (AED)</label>
-                  <Input
-                    type="number"
-                    value={registrationFee}
-                    onChange={(e) => setRegistrationFee(Number(e.target.value))}
-                    min={0}
-                    step={0.01}
-                  />
-                </div>
+                
                 <div className="bg-yellow-50 p-3 rounded-lg">
                   <div className="flex items-start gap-2">
                     <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
@@ -204,6 +189,7 @@ const NewYearManager: React.FC<NewYearManagerProps> = ({ users, onNewYear, onUpd
                     </div>
                   </div>
                 </div>
+                
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button className="w-full" disabled={loading}>
@@ -238,25 +224,25 @@ const NewYearManager: React.FC<NewYearManagerProps> = ({ users, onNewYear, onUpd
               <TableRow>
                 <TableHead>Year</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Fee (AED)</TableHead>
-                <TableHead>Created</TableHead>
                 <TableHead>Registrations</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {yearConfigs.map((config) => {
-                const yearUsers = users.filter(u => u.registrationYear === config.year);
+              {availableYears.map((year) => {
+                const yearlyData: YearlyData[] = JSON.parse(localStorage.getItem('yearlyData') || '[]');
+                const yearData = yearlyData.find(data => data.year === year);
+                const yearUsers = yearData?.users || [];
+                const isActive = year === currentYear;
+                
                 return (
-                  <TableRow key={config.id}>
-                    <TableCell className="font-medium">{config.year}</TableCell>
+                  <TableRow key={year}>
+                    <TableCell className="font-medium">{year}</TableCell>
                     <TableCell>
-                      <Badge variant={config.is_active ? "default" : "secondary"}>
-                        {config.is_active ? "Active" : "Inactive"}
+                      <Badge variant={isActive ? "default" : "secondary"}>
+                        {isActive ? "Active" : "Inactive"}
                       </Badge>
                     </TableCell>
-                    <TableCell>{config.registration_fee}</TableCell>
-                    <TableCell>{new Date(config.created_at).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Users className="h-4 w-4" />
@@ -264,28 +250,30 @@ const NewYearManager: React.FC<NewYearManagerProps> = ({ users, onNewYear, onUpd
                       </div>
                     </TableCell>
                     <TableCell>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="destructive" size="sm" disabled={config.is_active}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Year Configuration</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete the year {config.year} configuration? 
-                              This will remove all associated data. This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDeleteYear(config.id, config.year)}>
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      {!isActive && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Year</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete year {year}? 
+                                This will remove all data for {yearUsers.length} users. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteYear(year)}>
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                     </TableCell>
                   </TableRow>
                 );
