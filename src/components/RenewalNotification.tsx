@@ -5,13 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, DollarSign, Bell, CheckCircle } from 'lucide-react';
+import { Calendar, DollarSign, Bell, CheckCircle, CreditCard } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const RenewalNotification: React.FC = () => {
-  const { currentUser, currentYear, register, updateCurrentUser } = useAuth();
+  const { currentUser, currentYear, register, updateCurrentUser, submitPayment } = useAuth();
   const [isRenewalDialogOpen, setIsRenewalDialogOpen] = useState(false);
   const [isRenewing, setIsRenewing] = useState(false);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [paymentRemarks, setPaymentRemarks] = useState('');
   const { toast } = useToast();
 
   if (!currentUser) return null;
@@ -60,6 +62,7 @@ const RenewalNotification: React.FC = () => {
         
         updateCurrentUser(updatedUser);
         setIsRenewalDialogOpen(false);
+        setShowPaymentDialog(true); // Show payment dialog after successful renewal
         
         toast({
           title: "Renewal Successful",
@@ -81,6 +84,37 @@ const RenewalNotification: React.FC = () => {
       });
     } finally {
       setIsRenewing(false);
+    }
+  };
+
+  const handlePaymentSubmission = async () => {
+    if (!currentUser) return;
+
+    try {
+      const success = await submitPayment(50, paymentRemarks);
+      
+      if (success) {
+        setShowPaymentDialog(false);
+        setPaymentRemarks('');
+        
+        toast({
+          title: "Payment Submitted",
+          description: "Your renewal payment has been submitted for admin approval.",
+        });
+      } else {
+        toast({
+          title: "Payment Submission Failed",
+          description: "Failed to submit payment. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Payment submission error:', error);
+      toast({
+        title: "Error",
+        description: "An error occurred during payment submission.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -231,6 +265,61 @@ const RenewalNotification: React.FC = () => {
               <Button
                 variant="outline"
                 onClick={() => setIsRenewalDialogOpen(false)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Dialog */}
+      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Submit Renewal Payment
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-green-50 p-4 rounded-lg">
+              <div className="flex items-center justify-between">
+                <span className="font-medium">Payment Amount:</span>
+                <span className="text-xl font-bold text-green-600">AED 50</span>
+              </div>
+              <p className="text-sm text-green-700 mt-1">Renewal fee for {currentYear}</p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Payment Remarks (Optional)</label>
+              <textarea
+                className="w-full p-2 border rounded-md"
+                rows={3}
+                placeholder="Add any remarks about your payment..."
+                value={paymentRemarks}
+                onChange={(e) => setPaymentRemarks(e.target.value)}
+              />
+            </div>
+
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <strong>Note:</strong> After submitting your payment, it will be sent to admin for approval. 
+                You'll receive a notification once it's processed.
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                onClick={handlePaymentSubmission}
+                className="flex-1 bg-green-600 hover:bg-green-700"
+              >
+                Submit Payment
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowPaymentDialog(false)}
                 className="flex-1"
               >
                 Cancel
