@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { User } from '../types/user';
 import UsersOverview from './UsersOverview';
@@ -93,6 +94,12 @@ const AdminDashboard: React.FC = () => {
     );
     setUsers(updatedUsers);
     localStorage.setItem('users', JSON.stringify(updatedUsers));
+    
+    // Update current user if it's the same user
+    if (currentUser && currentUser.id === updatedUser.id) {
+      setCurrentUser(updatedUser);
+      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+    }
   };
 
   const handleUpdateUsers = (updatedUsers: User[]) => {
@@ -103,67 +110,22 @@ const AdminDashboard: React.FC = () => {
   const handleNewYear = (year: number) => {
     // Handle new year logic
     console.log('New year:', year);
-  };
-
-  const handleApprove = (userId: string) => {
-    const userToUpdate = users.find(user => user.id === userId);
-    if (userToUpdate) {
-      const updatedUser = { ...userToUpdate, status: 'approved' as const };
-      handleUpdateUser(updatedUser);
-      
-      toast({
-        title: "User Approved",
-        description: `${updatedUser.fullName} has been approved.`,
-      });
-    }
-  };
-
-  const handleReject = (userId: string) => {
-    const userToUpdate = users.find(user => user.id === userId);
-    if (userToUpdate) {
-      const updatedUser = { ...userToUpdate, status: 'rejected' as const };
-      handleUpdateUser(updatedUser);
-      
-      toast({
-        title: "User Rejected",
-        description: `${updatedUser.fullName} has been rejected.`,
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handlePaymentAction = (paymentId: string, action: 'approve' | 'reject') => {
-    const payment = pendingPayments.find(p => p.id === paymentId);
-    if (!payment) return;
-
-    if (action === 'approve') {
-      // Find user and update payment status
-      const userToUpdate = users.find(user => user.id === payment.userId);
-      if (userToUpdate) {
-        const updatedUser = { ...userToUpdate, paymentStatus: true };
-        handleUpdateUser(updatedUser);
-      }
-
-      toast({
-        title: "Payment Approved",
-        description: `Payment from ${payment.userDetails?.fullName || 'Unknown User'} has been approved.`,
-      });
-    } else {
-      toast({
-        title: "Payment Rejected",
-        description: `Payment from ${payment.userDetails?.fullName || 'Unknown User'} has been rejected.`,
-        variant: "destructive"
-      });
-    }
-
-    // Remove payment from pending list
-    const updatedPayments = pendingPayments.filter(p => p.id !== paymentId);
-    setPendingPayments(updatedPayments);
-    localStorage.setItem('pendingPayments', JSON.stringify(updatedPayments));
+    toast({
+      title: "New Year Created",
+      description: `New year ${year} has been created successfully.`,
+    });
   };
 
   if (!currentUser) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="w-96">
+          <CardContent className="p-6">
+            <p className="text-center text-gray-600">Loading admin dashboard...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   const stats = {
@@ -185,7 +147,7 @@ const AdminDashboard: React.FC = () => {
     { id: 'users', label: 'Users', icon: UserCheck },
     { id: 'payments', label: 'Payments', icon: CreditCard, badge: pendingPayments.length },
     { id: 'benefits', label: 'Benefits', icon: Gift },
-    { id: 'messaging', label: 'Messaging', icon: MessageSquare },
+    { id: 'messaging', label: 'Messages', icon: MessageSquare },
     { id: 'admins', label: 'Admins', icon: Shield },
     { id: 'newyear', label: 'New Year', icon: Calendar },
     { id: 'questions', label: 'Questions', icon: HelpCircle },
