@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -118,9 +117,12 @@ const RegistrationQuestionsManager: React.FC = () => {
     const updatedQuestions = [...questions, newQuestion];
     saveQuestions(updatedQuestions);
     
+    // Update the registration form to include new questions
+    updateRegistrationForm(updatedQuestions);
+    
     toast({
       title: "Success",
-      description: "Question added successfully!",
+      description: "Question added successfully and will appear in registration form!",
     });
 
     setIsAddDialogOpen(false);
@@ -166,6 +168,9 @@ const RegistrationQuestionsManager: React.FC = () => {
       q.id === editingQuestion.id ? updatedQuestion : q
     );
     saveQuestions(updatedQuestions);
+    
+    // Update the registration form
+    updateRegistrationForm(updatedQuestions);
 
     toast({
       title: "Success",
@@ -180,10 +185,24 @@ const RegistrationQuestionsManager: React.FC = () => {
     const updatedQuestions = questions.filter(q => q.id !== id);
     saveQuestions(updatedQuestions);
     
+    // Update the registration form
+    updateRegistrationForm(updatedQuestions);
+    
     toast({
       title: "Success",
       description: "Question deleted successfully!",
     });
+  };
+
+  const updateRegistrationForm = (updatedQuestions: RegistrationQuestion[]) => {
+    // This function updates the registration form to reflect the new questions
+    // Store the questions in a way that the registration form can access them
+    localStorage.setItem('activeRegistrationQuestions', JSON.stringify(updatedQuestions));
+    
+    // Dispatch a custom event to notify the registration form of changes
+    window.dispatchEvent(new CustomEvent('registrationQuestionsUpdated', {
+      detail: { questions: updatedQuestions }
+    }));
   };
 
   const moveQuestion = (id: string, direction: 'up' | 'down') => {
@@ -234,7 +253,7 @@ const RegistrationQuestionsManager: React.FC = () => {
                 Registration Questions Manager
               </CardTitle>
               <p className="text-sm text-gray-600 mt-2">
-                Manage the questions that appear in the user registration form
+                Manage the questions that appear in the user registration form. Changes are applied immediately.
               </p>
             </div>
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -280,6 +299,17 @@ const RegistrationQuestionsManager: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-4">
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <HelpCircle className="h-5 w-5 text-blue-600" />
+                  <h4 className="font-semibold text-blue-800">Live Integration</h4>
+                </div>
+                <p className="text-sm text-blue-700">
+                  Questions you add, edit, or delete here will automatically appear in the user registration form. 
+                  Use the arrow buttons to reorder questions as needed.
+                </p>
+              </div>
+              
               {sortedQuestions.map((question, index) => (
                 <div key={question.id} className="border rounded-lg p-4 bg-white">
                   <div className="flex flex-col lg:flex-row justify-between items-start space-y-4 lg:space-y-0">
