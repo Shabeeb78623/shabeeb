@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { User } from '../types/user';
@@ -69,7 +68,7 @@ const AdminDashboard: React.FC = () => {
         paymentStatus: approved,
         paymentSubmission: {
           ...user.paymentSubmission!,
-          approvalStatus: approved ? 'approved' as const : 'declined' as const,
+          approvalStatus: approved ? 'approved' as const : 'rejected' as const,
           adminRemarks: adminRemarks || '',
           approvalDate: new Date().toISOString()
         }
@@ -80,8 +79,8 @@ const AdminDashboard: React.FC = () => {
       setPaymentSubmissions(paymentSubmissions.filter(u => u.id !== userId));
       
       toast({
-        title: approved ? "Payment Approved" : "Payment Declined",
-        description: `Payment for ${user.fullName} has been ${approved ? 'approved' : 'declined'}.`,
+        title: approved ? "Payment Approved" : "Payment Rejected",
+        description: `Payment for ${user.fullName} has been ${approved ? 'approved' : 'rejected'}.`,
       });
     }
   };
@@ -142,7 +141,7 @@ const AdminDashboard: React.FC = () => {
       </div>
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue="pending" className="space-y-8">
+      <Tabs defaultValue="pending" className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="pending">Pending Users ({pendingUsers.length})</TabsTrigger>
           <TabsTrigger value="payments">Payment Submissions ({paymentSubmissions.length})</TabsTrigger>
@@ -151,9 +150,9 @@ const AdminDashboard: React.FC = () => {
         </TabsList>
 
         {/* Pending Users Tab */}
-        <TabsContent value="pending" className="space-y-8">
+        <TabsContent value="pending" className="space-y-6">
           <Card>
-            <CardHeader className="pb-4">
+            <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <AlertCircle className="h-5 w-5" />
                 Users Pending Approval
@@ -163,20 +162,18 @@ const AdminDashboard: React.FC = () => {
               {pendingUsers.length === 0 ? (
                 <p className="text-center text-gray-500 py-8">No pending users</p>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-4">
                   {pendingUsers.map((user) => (
-                    <div key={user.id} className="border rounded-lg p-6 space-y-4">
+                    <div key={user.id} className="border rounded-lg p-4 space-y-3">
                       <div className="flex justify-between items-start">
-                        <div className="space-y-2">
-                          <h3 className="font-semibold text-lg">{user.fullName}</h3>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
-                            <p>Reg No: <span className="font-medium">{user.regNo}</span></p>
-                            <p>Email: <span className="font-medium">{user.email}</span></p>
-                            <p>Mobile: <span className="font-medium">{user.mobileNo}</span></p>
-                            <p>Emirates ID: <span className="font-medium">{user.emiratesId}</span></p>
-                          </div>
+                        <div className="space-y-1">
+                          <h3 className="font-semibold">{user.fullName}</h3>
+                          <p className="text-sm text-gray-600">Reg No: {user.regNo}</p>
+                          <p className="text-sm text-gray-600">Email: {user.email}</p>
+                          <p className="text-sm text-gray-600">Mobile: {user.mobileNo}</p>
+                          <p className="text-sm text-gray-600">Emirates ID: {user.emiratesId}</p>
                           {user.isReregistration && (
-                            <Badge variant="outline" className="text-orange-600 border-orange-600">
+                            <Badge variant="outline" className="text-orange-600">
                               Renewal Registration
                             </Badge>
                           )}
@@ -200,7 +197,7 @@ const AdminDashboard: React.FC = () => {
                           </Button>
                         </div>
                       </div>
-                      <div className="text-xs text-gray-500 pt-2 border-t">
+                      <div className="text-xs text-gray-500">
                         Registered: {new Date(user.registrationDate).toLocaleDateString()}
                       </div>
                     </div>
@@ -212,9 +209,9 @@ const AdminDashboard: React.FC = () => {
         </TabsContent>
 
         {/* Payment Submissions Tab */}
-        <TabsContent value="payments" className="space-y-8">
+        <TabsContent value="payments" className="space-y-6">
           <Card>
-            <CardHeader className="pb-4">
+            <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CreditCard className="h-5 w-5" />
                 Payment Submissions for Review
@@ -224,30 +221,28 @@ const AdminDashboard: React.FC = () => {
               {paymentSubmissions.length === 0 ? (
                 <p className="text-center text-gray-500 py-8">No pending payment submissions</p>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-4">
                   {paymentSubmissions.map((user) => (
-                    <div key={user.id} className="border rounded-lg p-6 space-y-4">
+                    <div key={user.id} className="border rounded-lg p-4 space-y-3">
                       <div className="flex justify-between items-start">
-                        <div className="space-y-2">
-                          <h3 className="font-semibold text-lg">{user.fullName}</h3>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
-                            <p>Reg No: <span className="font-medium">{user.regNo}</span></p>
-                            <p>Email: <span className="font-medium">{user.email}</span></p>
-                          </div>
+                        <div className="space-y-1">
+                          <h3 className="font-semibold">{user.fullName}</h3>
+                          <p className="text-sm text-gray-600">Reg No: {user.regNo}</p>
+                          <p className="text-sm text-gray-600">Email: {user.email}</p>
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-medium">Amount:</span>
-                            <Badge variant="outline" className="text-green-600 border-green-600">
+                            <Badge variant="outline" className="text-green-600">
                               AED {user.paymentSubmission?.amount || user.paymentAmount}
                             </Badge>
                           </div>
                           {user.paymentSubmission?.userRemarks && (
                             <div className="text-sm">
                               <span className="font-medium">User Remarks:</span>
-                              <p className="text-gray-600 mt-1 p-2 bg-gray-50 rounded">{user.paymentSubmission.userRemarks}</p>
+                              <p className="text-gray-600 mt-1">{user.paymentSubmission.userRemarks}</p>
                             </div>
                           )}
                           {user.isReregistration && (
-                            <Badge variant="outline" className="text-orange-600 border-orange-600">
+                            <Badge variant="outline" className="text-orange-600">
                               Renewal Payment
                             </Badge>
                           )}
@@ -267,11 +262,11 @@ const AdminDashboard: React.FC = () => {
                             onClick={() => handlePaymentApproval(user.id, false)}
                           >
                             <XCircle className="h-4 w-4 mr-1" />
-                            Decline
+                            Reject
                           </Button>
                         </div>
                       </div>
-                      <div className="text-xs text-gray-500 pt-2 border-t">
+                      <div className="text-xs text-gray-500">
                         Submitted: {user.paymentSubmission?.submissionDate ? 
                           new Date(user.paymentSubmission.submissionDate).toLocaleDateString() : 
                           'N/A'
@@ -285,9 +280,9 @@ const AdminDashboard: React.FC = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="approved" className="space-y-8">
+        <TabsContent value="approved" className="space-y-6">
           <Card>
-            <CardHeader className="pb-4">
+            <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <UserCheck className="h-5 w-5" />
                 Approved Users
@@ -325,13 +320,13 @@ const AdminDashboard: React.FC = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="overview" className="space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
-              <CardHeader className="pb-4">
+              <CardHeader>
                 <CardTitle>User Status Summary</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-2">
                 <div className="flex justify-between">
                   <span>Total Users:</span>
                   <span className="font-semibold">{users.length}</span>
@@ -352,10 +347,10 @@ const AdminDashboard: React.FC = () => {
             </Card>
 
             <Card>
-              <CardHeader className="pb-4">
+              <CardHeader>
                 <CardTitle>Payment Summary</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-2">
                 <div className="flex justify-between">
                   <span>Total Paid:</span>
                   <span className="font-semibold text-green-600">{paidUsers.length}</span>
