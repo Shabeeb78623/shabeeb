@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2, ArrowUp, ArrowDown, Eye, Settings } from 'lucide-react';
 import QuestionFormFields from './QuestionFormFields';
 
-type FieldType = 'text' | 'select' | 'checkbox' | 'textarea' | 'email' | 'phone' | 'dependent_select';
+type FieldType = 'text' | 'select' | 'checkbox' | 'textarea' | 'email' | 'phone';
 
 interface RegistrationQuestion {
   id: string;
@@ -23,7 +23,6 @@ interface RegistrationQuestion {
   conditional_value?: string;
   placeholder?: string;
   help_text?: string;
-  dependent_options?: { [key: string]: string[] };
 }
 
 const RegistrationQuestionsManager: React.FC = () => {
@@ -39,7 +38,6 @@ const RegistrationQuestionsManager: React.FC = () => {
     conditional_value: '',
     placeholder: '',
     help_text: '',
-    dependent_options: {} as { [key: string]: string[] },
   });
   const [loading, setLoading] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -79,30 +77,12 @@ const RegistrationQuestionsManager: React.FC = () => {
           },
           {
             id: '3',
-            question_key: 'mobile_no',
-            question_text: 'Mobile Number',
-            field_type: 'phone',
-            required: true,
-            order_index: 3,
-            placeholder: 'Enter your mobile number'
-          },
-          {
-            id: '4',
             question_key: 'emirate',
             question_text: 'Emirate',
             field_type: 'select',
             options: ['Abu Dhabi', 'Dubai', 'Sharjah', 'Ajman', 'Umm Al Quwain', 'Ras Al Khaimah', 'Fujairah'],
             required: true,
-            order_index: 4
-          },
-          {
-            id: '5',
-            question_key: 'mandalam',
-            question_text: 'Mandalam',
-            field_type: 'select',
-            options: ['BALUSHERI', 'KUNNAMANGALAM', 'KODUVALLI', 'NADAPURAM', 'KOYLANDI', 'VADAKARA', 'BEPUR', 'KUTTIYADI'],
-            required: true,
-            order_index: 5
+            order_index: 3
           }
         ];
         localStorage.setItem('registrationQuestions', JSON.stringify(defaultQuestions));
@@ -120,14 +100,14 @@ const RegistrationQuestionsManager: React.FC = () => {
 
   const saveQuestions = (updatedQuestions: RegistrationQuestion[]) => {
     try {
-      // Re-index questions to ensure proper ordering
+      // Re-index questions
       const reindexedQuestions = updatedQuestions
         .sort((a, b) => a.order_index - b.order_index)
         .map((q, index) => ({ ...q, order_index: index + 1 }));
       
       localStorage.setItem('registrationQuestions', JSON.stringify(reindexedQuestions));
       setQuestions(reindexedQuestions);
-      console.log('Questions saved successfully:', reindexedQuestions);
+      console.log('Questions saved:', reindexedQuestions);
     } catch (error) {
       console.error('Error saving questions:', error);
       toast({
@@ -149,45 +129,18 @@ const RegistrationQuestionsManager: React.FC = () => {
       conditional_value: '',
       placeholder: '',
       help_text: '',
-      dependent_options: {},
     });
   };
 
-  const validateForm = () => {
+  const handleAddQuestion = () => {
     if (!questionForm.question_key.trim() || !questionForm.question_text.trim()) {
       toast({
         title: "Validation Error",
         description: "Question key and text are required.",
         variant: "destructive"
       });
-      return false;
+      return;
     }
-
-    // Validate question key format (lowercase with underscores)
-    if (!/^[a-z_]+$/.test(questionForm.question_key)) {
-      toast({
-        title: "Invalid Question Key",
-        description: "Question key should only contain lowercase letters and underscores.",
-        variant: "destructive"
-      });
-      return false;
-    }
-
-    // Validate select and dependent_select have options
-    if (['select', 'dependent_select'].includes(questionForm.field_type) && questionForm.options.length === 0) {
-      toast({
-        title: "Missing Options",
-        description: "Select and dependent select fields must have at least one option.",
-        variant: "destructive"
-      });
-      return false;
-    }
-
-    return true;
-  };
-
-  const handleAddQuestion = () => {
-    if (!validateForm()) return;
 
     // Check for duplicate question key
     if (questions.some(q => q.question_key === questionForm.question_key)) {
@@ -206,14 +159,13 @@ const RegistrationQuestionsManager: React.FC = () => {
         question_key: questionForm.question_key,
         question_text: questionForm.question_text,
         field_type: questionForm.field_type,
-        options: ['select', 'dependent_select'].includes(questionForm.field_type) ? questionForm.options : undefined,
+        options: questionForm.field_type === 'select' ? questionForm.options : undefined,
         required: questionForm.required,
         order_index: questions.length + 1,
         conditional_parent: questionForm.conditional_parent === 'none' ? undefined : questionForm.conditional_parent,
         conditional_value: questionForm.conditional_value || undefined,
         placeholder: questionForm.placeholder || undefined,
         help_text: questionForm.help_text || undefined,
-        dependent_options: questionForm.field_type === 'dependent_select' ? questionForm.dependent_options : undefined,
       };
 
       const updatedQuestions = [...questions, newQuestion];
@@ -250,14 +202,21 @@ const RegistrationQuestionsManager: React.FC = () => {
       conditional_value: question.conditional_value || '',
       placeholder: question.placeholder || '',
       help_text: question.help_text || '',
-      dependent_options: question.dependent_options || {},
     });
     setIsEditDialogOpen(true);
   };
 
   const handleUpdateQuestion = () => {
     if (!editingQuestion) return;
-    if (!validateForm()) return;
+
+    if (!questionForm.question_key.trim() || !questionForm.question_text.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Question key and text are required.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     // Check for duplicate question key (excluding current question)
     if (questions.some(q => q.question_key === questionForm.question_key && q.id !== editingQuestion.id)) {
@@ -276,13 +235,12 @@ const RegistrationQuestionsManager: React.FC = () => {
         question_key: questionForm.question_key,
         question_text: questionForm.question_text,
         field_type: questionForm.field_type,
-        options: ['select', 'dependent_select'].includes(questionForm.field_type) ? questionForm.options : undefined,
+        options: questionForm.field_type === 'select' ? questionForm.options : undefined,
         required: questionForm.required,
         conditional_parent: questionForm.conditional_parent === 'none' ? undefined : questionForm.conditional_parent,
         conditional_value: questionForm.conditional_value || undefined,
         placeholder: questionForm.placeholder || undefined,
         help_text: questionForm.help_text || undefined,
-        dependent_options: questionForm.field_type === 'dependent_select' ? questionForm.dependent_options : undefined,
       };
 
       const updatedQuestions = questions.map(q => 
@@ -310,18 +268,7 @@ const RegistrationQuestionsManager: React.FC = () => {
     }
   };
 
-  const handleDeleteQuestion = (id: string, questionKey: string) => {
-    // Prevent deletion of core required questions
-    const coreQuestions = ['full_name', 'email', 'mobile_no', 'emirate', 'mandalam'];
-    if (coreQuestions.includes(questionKey)) {
-      toast({
-        title: "Cannot Delete",
-        description: "This is a core required field and cannot be deleted.",
-        variant: "destructive"
-      });
-      return;
-    }
-
+  const handleDeleteQuestion = (id: string) => {
     setLoading(true);
     try {
       const updatedQuestions = questions.filter(q => q.id !== id);
@@ -354,16 +301,7 @@ const RegistrationQuestionsManager: React.FC = () => {
     [updatedQuestions[currentIndex], updatedQuestions[newIndex]] = 
     [updatedQuestions[newIndex], updatedQuestions[currentIndex]];
 
-    // Update order_index for both questions
-    updatedQuestions[currentIndex].order_index = currentIndex + 1;
-    updatedQuestions[newIndex].order_index = newIndex + 1;
-
     saveQuestions(updatedQuestions);
-
-    toast({
-      title: "Question Moved",
-      description: `Question moved ${direction}.`,
-    });
   };
 
   return (
@@ -464,7 +402,7 @@ const RegistrationQuestionsManager: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="capitalize">
-                          {question.field_type.replace('_', ' ')}
+                          {question.field_type}
                         </Badge>
                         {question.options && (
                           <p className="text-xs text-gray-500 mt-1">
@@ -491,7 +429,6 @@ const RegistrationQuestionsManager: React.FC = () => {
                             size="sm"
                             onClick={() => moveQuestion(question.id, 'up')}
                             disabled={index === 0}
-                            title="Move up"
                           >
                             <ArrowUp className="h-3 w-3" />
                           </Button>
@@ -500,7 +437,6 @@ const RegistrationQuestionsManager: React.FC = () => {
                             size="sm"
                             onClick={() => moveQuestion(question.id, 'down')}
                             disabled={index === questions.length - 1}
-                            title="Move down"
                           >
                             <ArrowDown className="h-3 w-3" />
                           </Button>
@@ -508,15 +444,13 @@ const RegistrationQuestionsManager: React.FC = () => {
                             variant="outline" 
                             size="sm"
                             onClick={() => handleEditQuestion(question)}
-                            title="Edit question"
                           >
                             <Edit className="h-3 w-3" />
                           </Button>
                           <Button 
                             variant="destructive" 
                             size="sm" 
-                            onClick={() => handleDeleteQuestion(question.id, question.question_key)}
-                            title="Delete question"
+                            onClick={() => handleDeleteQuestion(question.id)}
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>

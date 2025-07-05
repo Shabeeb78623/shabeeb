@@ -32,7 +32,6 @@ const EnhancedMessageManager: React.FC<EnhancedMessageManagerProps> = ({ users, 
   const [subject, setSubject] = useState('');
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [sendToUnpaid, setSendToUnpaid] = useState(false);
-  const [sendToPending, setSendToPending] = useState(false);
   const [mandalamFilter, setMandalamFilter] = useState('all');
   const [previewMessage, setPreviewMessage] = useState('');
   const { toast } = useToast();
@@ -61,23 +60,6 @@ const EnhancedMessageManager: React.FC<EnhancedMessageManagerProps> = ({ users, 
       setTemplates(transformedTemplates);
     } catch (error) {
       console.error('Error fetching templates:', error);
-      // Fallback to default templates if Supabase fails
-      setTemplates([
-        {
-          id: '1',
-          template_name: 'Payment Reminder',
-          subject: 'Payment Reminder - {{name}}',
-          message_content: 'Dear {{name}},\n\nThis is a reminder that your payment for {{year}} registration is still pending.\n\nReg No: {{regNo}}\nMandalam: {{mandalam}}\n\nPlease complete your payment at your earliest convenience.\n\nThank you.',
-          variables: ['name', 'year', 'regNo', 'mandalam']
-        },
-        {
-          id: '2',
-          template_name: 'Approval Notification',
-          subject: 'Registration Approved - {{name}}',
-          message_content: 'Dear {{name}},\n\nCongratulations! Your registration has been approved.\n\nReg No: {{regNo}}\nMandalam: {{mandalam}}\n\nWelcome to our community!\n\nBest regards.',
-          variables: ['name', 'regNo', 'mandalam']
-        }
-      ]);
     }
   };
 
@@ -100,14 +82,8 @@ const EnhancedMessageManager: React.FC<EnhancedMessageManagerProps> = ({ users, 
       filtered = filtered.filter(user => user.mandalam === mandalamFilter);
     }
 
-    // Filter by payment status
     if (sendToUnpaid) {
       filtered = filtered.filter(user => !user.paymentStatus);
-    }
-
-    // Filter by approval status  
-    if (sendToPending) {
-      filtered = filtered.filter(user => user.status === 'pending');
     }
 
     return filtered;
@@ -171,7 +147,6 @@ const EnhancedMessageManager: React.FC<EnhancedMessageManagerProps> = ({ users, 
     setSubject('');
     setSelectedUsers([]);
     setSendToUnpaid(false);
-    setSendToPending(false);
     setSelectedTemplate(null);
   };
 
@@ -227,28 +202,15 @@ const EnhancedMessageManager: React.FC<EnhancedMessageManagerProps> = ({ users, 
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="unpaid-only"
-              checked={sendToUnpaid}
-              onCheckedChange={(checked) => setSendToUnpaid(checked === true)}
-            />
-            <label htmlFor="unpaid-only" className="text-sm">
-              Send only to users who haven't paid
-            </label>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="pending-only"
-              checked={sendToPending}
-              onCheckedChange={(checked) => setSendToPending(checked === true)}
-            />
-            <label htmlFor="pending-only" className="text-sm">
-              Send only to pending approval users
-            </label>
-          </div>
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id="unpaid-only"
+            checked={sendToUnpaid}
+            onCheckedChange={(checked) => setSendToUnpaid(checked === true)}
+          />
+          <label htmlFor="unpaid-only" className="text-sm">
+            Send only to users who haven't paid
+          </label>
         </div>
 
         <div>

@@ -65,22 +65,6 @@ const QuestionFormFields: React.FC<QuestionFormFieldsProps> = ({
     setQuestionForm({ ...questionForm, dependent_options: updated });
   };
 
-  const handleFieldTypeChange = (newFieldType: FieldType) => {
-    // Reset relevant fields when field type changes
-    const updatedForm = {
-      ...questionForm,
-      field_type: newFieldType,
-    };
-
-    // Clear options and dependent_options if not needed
-    if (newFieldType !== 'select' && newFieldType !== 'dependent_select') {
-      updatedForm.options = [];
-      updatedForm.dependent_options = {};
-    }
-
-    setQuestionForm(updatedForm);
-  };
-
   return (
     <div className="space-y-6">
       <Card>
@@ -142,7 +126,7 @@ const QuestionFormFields: React.FC<QuestionFormFieldsProps> = ({
             <Label htmlFor="field_type">Field Type *</Label>
             <Select
               value={questionForm.field_type}
-              onValueChange={handleFieldTypeChange}
+              onValueChange={(value: FieldType) => setQuestionForm({ ...questionForm, field_type: value })}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -195,28 +179,26 @@ const QuestionFormFields: React.FC<QuestionFormFieldsProps> = ({
                 </p>
               </div>
 
-              {questionForm.options.length > 0 && (
-                <div>
-                  <Label>Dependent Options</Label>
-                  <p className="text-sm text-gray-500 mb-3">
-                    Configure what options appear when each parent option is selected:
-                  </p>
-                  {questionForm.options.map((parentOption) => (
-                    <div key={parentOption} className="border rounded-lg p-3 mb-3">
-                      <Label className="font-medium text-sm">
-                        When "{parentOption}" is selected, show:
-                      </Label>
-                      <Textarea
-                        placeholder={`Options for ${parentOption} (one per line):&#10;Option 1&#10;Option 2`}
-                        value={(questionForm.dependent_options?.[parentOption] || []).join('\n')}
-                        onChange={(e) => handleDependentOptionsChange(parentOption, e.target.value)}
-                        rows={3}
-                        className="mt-2"
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div>
+                <Label>Dependent Options</Label>
+                <p className="text-sm text-gray-500 mb-3">
+                  Configure what options appear when each parent option is selected:
+                </p>
+                {questionForm.options.map((parentOption) => (
+                  <div key={parentOption} className="border rounded-lg p-3 mb-3">
+                    <Label className="font-medium text-sm">
+                      When "{parentOption}" is selected, show:
+                    </Label>
+                    <Textarea
+                      placeholder={`Options for ${parentOption} (one per line):&#10;Option 1&#10;Option 2`}
+                      value={(questionForm.dependent_options?.[parentOption] || []).join('\n')}
+                      onChange={(e) => handleDependentOptionsChange(parentOption, e.target.value)}
+                      rows={3}
+                      className="mt-2"
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
