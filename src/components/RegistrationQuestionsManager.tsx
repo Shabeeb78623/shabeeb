@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2, ArrowUp, ArrowDown, Eye, Settings } from 'lucide-react';
 import QuestionFormFields from './QuestionFormFields';
 
-type FieldType = 'text' | 'select' | 'checkbox' | 'textarea' | 'email' | 'phone';
+type FieldType = 'text' | 'select' | 'checkbox' | 'textarea' | 'email' | 'phone' | 'dependent_select';
 
 interface RegistrationQuestion {
   id: string;
@@ -23,6 +23,7 @@ interface RegistrationQuestion {
   conditional_value?: string;
   placeholder?: string;
   help_text?: string;
+  dependent_options?: { [key: string]: string[] };
 }
 
 const RegistrationQuestionsManager: React.FC = () => {
@@ -38,6 +39,7 @@ const RegistrationQuestionsManager: React.FC = () => {
     conditional_value: '',
     placeholder: '',
     help_text: '',
+    dependent_options: {} as { [key: string]: string[] },
   });
   const [loading, setLoading] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -129,6 +131,7 @@ const RegistrationQuestionsManager: React.FC = () => {
       conditional_value: '',
       placeholder: '',
       help_text: '',
+      dependent_options: {},
     });
   };
 
@@ -159,13 +162,14 @@ const RegistrationQuestionsManager: React.FC = () => {
         question_key: questionForm.question_key,
         question_text: questionForm.question_text,
         field_type: questionForm.field_type,
-        options: questionForm.field_type === 'select' ? questionForm.options : undefined,
+        options: ['select', 'dependent_select'].includes(questionForm.field_type) ? questionForm.options : undefined,
         required: questionForm.required,
         order_index: questions.length + 1,
         conditional_parent: questionForm.conditional_parent === 'none' ? undefined : questionForm.conditional_parent,
         conditional_value: questionForm.conditional_value || undefined,
         placeholder: questionForm.placeholder || undefined,
         help_text: questionForm.help_text || undefined,
+        dependent_options: questionForm.field_type === 'dependent_select' ? questionForm.dependent_options : undefined,
       };
 
       const updatedQuestions = [...questions, newQuestion];
@@ -202,6 +206,7 @@ const RegistrationQuestionsManager: React.FC = () => {
       conditional_value: question.conditional_value || '',
       placeholder: question.placeholder || '',
       help_text: question.help_text || '',
+      dependent_options: question.dependent_options || {},
     });
     setIsEditDialogOpen(true);
   };
@@ -235,12 +240,13 @@ const RegistrationQuestionsManager: React.FC = () => {
         question_key: questionForm.question_key,
         question_text: questionForm.question_text,
         field_type: questionForm.field_type,
-        options: questionForm.field_type === 'select' ? questionForm.options : undefined,
+        options: ['select', 'dependent_select'].includes(questionForm.field_type) ? questionForm.options : undefined,
         required: questionForm.required,
         conditional_parent: questionForm.conditional_parent === 'none' ? undefined : questionForm.conditional_parent,
         conditional_value: questionForm.conditional_value || undefined,
         placeholder: questionForm.placeholder || undefined,
         help_text: questionForm.help_text || undefined,
+        dependent_options: questionForm.field_type === 'dependent_select' ? questionForm.dependent_options : undefined,
       };
 
       const updatedQuestions = questions.map(q => 
@@ -402,7 +408,7 @@ const RegistrationQuestionsManager: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="capitalize">
-                          {question.field_type}
+                          {question.field_type.replace('_', ' ')}
                         </Badge>
                         {question.options && (
                           <p className="text-xs text-gray-500 mt-1">
