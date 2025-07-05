@@ -79,12 +79,30 @@ const RegistrationQuestionsManager: React.FC = () => {
           },
           {
             id: '3',
+            question_key: 'mobile_no',
+            question_text: 'Mobile Number',
+            field_type: 'phone',
+            required: true,
+            order_index: 3,
+            placeholder: 'Enter your mobile number'
+          },
+          {
+            id: '4',
             question_key: 'emirate',
             question_text: 'Emirate',
             field_type: 'select',
             options: ['Abu Dhabi', 'Dubai', 'Sharjah', 'Ajman', 'Umm Al Quwain', 'Ras Al Khaimah', 'Fujairah'],
             required: true,
-            order_index: 3
+            order_index: 4
+          },
+          {
+            id: '5',
+            question_key: 'mandalam',
+            question_text: 'Mandalam',
+            field_type: 'select',
+            options: ['BALUSHERI', 'KUNNAMANGALAM', 'KODUVALLI', 'NADAPURAM', 'KOYLANDI', 'VADAKARA', 'BEPUR', 'KUTTIYADI'],
+            required: true,
+            order_index: 5
           }
         ];
         localStorage.setItem('registrationQuestions', JSON.stringify(defaultQuestions));
@@ -102,14 +120,14 @@ const RegistrationQuestionsManager: React.FC = () => {
 
   const saveQuestions = (updatedQuestions: RegistrationQuestion[]) => {
     try {
-      // Re-index questions
+      // Re-index questions to ensure proper ordering
       const reindexedQuestions = updatedQuestions
         .sort((a, b) => a.order_index - b.order_index)
         .map((q, index) => ({ ...q, order_index: index + 1 }));
       
       localStorage.setItem('registrationQuestions', JSON.stringify(reindexedQuestions));
       setQuestions(reindexedQuestions);
-      console.log('Questions saved:', reindexedQuestions);
+      console.log('Questions saved successfully:', reindexedQuestions);
     } catch (error) {
       console.error('Error saving questions:', error);
       toast({
@@ -135,15 +153,41 @@ const RegistrationQuestionsManager: React.FC = () => {
     });
   };
 
-  const handleAddQuestion = () => {
+  const validateForm = () => {
     if (!questionForm.question_key.trim() || !questionForm.question_text.trim()) {
       toast({
         title: "Validation Error",
         description: "Question key and text are required.",
         variant: "destructive"
       });
-      return;
+      return false;
     }
+
+    // Validate question key format (lowercase with underscores)
+    if (!/^[a-z_]+$/.test(questionForm.question_key)) {
+      toast({
+        title: "Invalid Question Key",
+        description: "Question key should only contain lowercase letters and underscores.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    // Validate select and dependent_select have options
+    if (['select', 'dependent_select'].includes(questionForm.field_type) && questionForm.options.length === 0) {
+      toast({
+        title: "Missing Options",
+        description: "Select and dependent select fields must have at least one option.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleAddQuestion = () => {
+    if (!validateForm()) return;
 
     // Check for duplicate question key
     if (questions.some(q => q.question_key === questionForm.question_key)) {
@@ -213,15 +257,7 @@ const RegistrationQuestionsManager: React.FC = () => {
 
   const handleUpdateQuestion = () => {
     if (!editingQuestion) return;
-
-    if (!questionForm.question_key.trim() || !questionForm.question_text.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Question key and text are required.",
-        variant: "destructive"
-      });
-      return;
-    }
+    if (!validateForm()) return;
 
     // Check for duplicate question key (excluding current question)
     if (questions.some(q => q.question_key === questionForm.question_key && q.id !== editingQuestion.id)) {
@@ -274,7 +310,18 @@ const RegistrationQuestionsManager: React.FC = () => {
     }
   };
 
-  const handleDeleteQuestion = (id: string) => {
+  const handleDeleteQuestion = (id: string, questionKey: string) => {
+    // Prevent deletion of core required questions
+    const coreQuestions = ['full_name', 'email', 'mobile_no', 'emirate', 'mandalam'];
+    if (coreQuestions.includes(questionKey)) {
+      toast({
+        title: "Cannot Delete",
+        description: "This is a core required field and cannot be deleted.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const updatedQuestions = questions.filter(q => q.id !== id);
@@ -307,7 +354,16 @@ const RegistrationQuestionsManager: React.FC = () => {
     [updatedQuestions[currentIndex], updatedQuestions[newIndex]] = 
     [updatedQuestions[newIndex], updatedQuestions[currentIndex]];
 
+    // Update order_index for both questions
+    updatedQuestions[currentIndex].order_index = currentIndex + 1;
+    updatedQuestions[newIndex].order_index = newIndex + 1;
+
     saveQuestions(updatedQuestions);
+
+    toast({
+      title: "Question Moved",
+      description: `Question moved ${direction}.`,
+    });
   };
 
   return (
@@ -435,6 +491,7 @@ const RegistrationQuestionsManager: React.FC = () => {
                             size="sm"
                             onClick={() => moveQuestion(question.id, 'up')}
                             disabled={index === 0}
+                            title="Move up"
                           >
                             <ArrowUp className="h-3 w-3" />
                           </Button>
@@ -443,6 +500,7 @@ const RegistrationQuestionsManager: React.FC = () => {
                             size="sm"
                             onClick={() => moveQuestion(question.id, 'down')}
                             disabled={index === questions.length - 1}
+                            title="Move down"
                           >
                             <ArrowDown className="h-3 w-3" />
                           </Button>
@@ -450,13 +508,15 @@ const RegistrationQuestionsManager: React.FC = () => {
                             variant="outline" 
                             size="sm"
                             onClick={() => handleEditQuestion(question)}
+                            title="Edit question"
                           >
                             <Edit className="h-3 w-3" />
                           </Button>
                           <Button 
                             variant="destructive" 
                             size="sm" 
-                            onClick={() => handleDeleteQuestion(question.id)}
+                            onClick={() => handleDeleteQuestion(question.id, question.question_key)}
+                            title="Delete question"
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>
