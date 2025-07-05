@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User } from '../types/user';
 import UsersOverview from './UsersOverview';
@@ -335,6 +334,19 @@ const AdminDashboard: React.FC = () => {
               <TabsContent value="users" className="mt-0">
                 <UsersDataTable 
                   users={users}
+                  onUpdateUser={handleUpdateUser}
+                  onDeleteUser={(userId: string) => {
+                    const updatedUsers = users.filter(user => user.id !== userId);
+                    handleUpdateUsers(updatedUsers);
+                    toast({
+                      title: "User Deleted",
+                      description: "User has been deleted successfully.",
+                      variant: "destructive"
+                    });
+                  }}
+                  isMasterAdmin={currentUser?.role === 'master_admin'}
+                  userRole={currentUser?.role || 'user'}
+                  userMandalam={currentUser?.mandalam}
                 />
               </TabsContent>
 
