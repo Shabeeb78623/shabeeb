@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { User } from '../types/user';
@@ -16,6 +17,7 @@ import UsersDataTable from './UsersDataTable';
 import UsersOverview from './UsersOverview';
 import EnhancedBenefitManager from './EnhancedBenefitManager';
 import NotificationManager from './NotificationManager';
+import EnhancedMessageManager from './EnhancedMessageManager';
 import CustomAdminManager from './CustomAdminManager';
 import CSVImport from './CSVImport';
 import RegistrationQuestionsManager from './RegistrationQuestionsManager';
@@ -405,14 +407,14 @@ const AdminDashboard: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800">Admin Dashboard</h1>
-              <div className="flex items-center gap-4 mt-3">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 sm:py-6 space-y-4 sm:space-y-0">
+            <div className="w-full sm:w-auto">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Admin Dashboard</h1>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 mt-3">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-600">Year:</span>
                   <Select value={currentYear.toString()} onValueChange={(year) => switchYear(parseInt(year))}>
-                    <SelectTrigger className="w-24">
+                    <SelectTrigger className="w-20 sm:w-24">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -427,16 +429,16 @@ const AdminDashboard: React.FC = () => {
                 )}
               </div>
             </div>
-            <div className="flex space-x-3">
+            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
               {hasPermission('canViewUsers') && (
-                <Button onClick={exportToExcel} variant="outline">
+                <Button onClick={exportToExcel} variant="outline" className="w-full sm:w-auto">
                   Export to Excel
                 </Button>
               )}
               {isMasterAdmin && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="destructive">
+                    <Button variant="destructive" className="w-full sm:w-auto">
                       Clear Data
                     </Button>
                   </AlertDialogTrigger>
@@ -462,7 +464,7 @@ const AdminDashboard: React.FC = () => {
                   </AlertDialogContent>
                 </AlertDialog>
               )}
-              <Button onClick={logout} variant="outline">
+              <Button onClick={logout} variant="outline" className="w-full sm:w-auto">
                 Logout
               </Button>
             </div>
@@ -470,84 +472,87 @@ const AdminDashboard: React.FC = () => {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="space-y-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+        <div className="space-y-6 sm:space-y-8">
           {/* Statistics Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
-                <div className="text-sm text-gray-600">Total Users</div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-9 gap-3 sm:gap-4">
+            <Card className="col-span-1">
+              <CardContent className="p-3 sm:p-4">
+                <div className="text-lg sm:text-2xl font-bold text-blue-600">{stats.total}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Total Users</div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-green-600">{stats.newRegistrations}</div>
-                <div className="text-sm text-gray-600">New</div>
+            <Card className="col-span-1">
+              <CardContent className="p-3 sm:p-4">
+                <div className="text-lg sm:text-2xl font-bold text-green-600">{stats.newRegistrations}</div>
+                <div className="text-xs sm:text-sm text-gray-600">New</div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-orange-600">{stats.reregistrations}</div>
-                <div className="text-sm text-gray-600">Re-registrations</div>
+            <Card className="col-span-1">
+              <CardContent className="p-3 sm:p-4">
+                <div className="text-lg sm:text-2xl font-bold text-orange-600">{stats.reregistrations}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Re-reg</div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
-                <div className="text-sm text-gray-600">Pending</div>
+            <Card className="col-span-1">
+              <CardContent className="p-3 sm:p-4">
+                <div className="text-lg sm:text-2xl font-bold text-yellow-600">{stats.pending}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Pending</div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
-                <div className="text-sm text-gray-600">Approved</div>
+            <Card className="col-span-1">
+              <CardContent className="p-3 sm:p-4">
+                <div className="text-lg sm:text-2xl font-bold text-green-600">{stats.approved}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Approved</div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
-                <div className="text-sm text-gray-600">Rejected</div>
+            <Card className="col-span-1">
+              <CardContent className="p-3 sm:p-4">
+                <div className="text-lg sm:text-2xl font-bold text-red-600">{stats.rejected}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Rejected</div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-purple-600">{stats.paid}</div>
-                <div className="text-sm text-gray-600">Paid</div>
+            <Card className="col-span-1">
+              <CardContent className="p-3 sm:p-4">
+                <div className="text-lg sm:text-2xl font-bold text-purple-600">{stats.paid}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Paid</div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-indigo-600">{stats.admins}</div>
-                <div className="text-sm text-gray-600">Admins</div>
+            <Card className="col-span-1">
+              <CardContent className="p-3 sm:p-4">
+                <div className="text-lg sm:text-2xl font-bold text-indigo-600">{stats.admins}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Admins</div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-emerald-600">AED {stats.totalPaymentAmount}</div>
-                <div className="text-sm text-gray-600">Collected</div>
+            <Card className="col-span-1">
+              <CardContent className="p-3 sm:p-4">
+                <div className="text-sm sm:text-2xl font-bold text-emerald-600">AED {stats.totalPaymentAmount}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Collected</div>
               </CardContent>
             </Card>
           </div>
 
-          <Tabs defaultValue="approvals" className="space-y-6">
-            <TabsList className="grid grid-cols-11 w-full">
-              {hasPermission('canApproveUsers') && <TabsTrigger value="approvals">User Approvals</TabsTrigger>}
-              {hasPermission('canViewUsers') && <TabsTrigger value="users">Users Data</TabsTrigger>}
-              {hasPermission('canViewUsers') && <TabsTrigger value="overview">Users Overview</TabsTrigger>}
-              {hasPermission('canManagePayments') && <TabsTrigger value="payments">Payment Management</TabsTrigger>}
-              {hasPermission('canManagePayments') && <TabsTrigger value="payment-submissions">Payment Submissions</TabsTrigger>}
-              {hasPermission('canManageBenefits') && <TabsTrigger value="benefits">Benefit Management</TabsTrigger>}
-              {hasPermission('canSendNotifications') && <TabsTrigger value="notifications">Send Notifications</TabsTrigger>}
-              {(isMasterAdmin || currentUser?.role === 'admin') && <TabsTrigger value="import">Import Users</TabsTrigger>}
-              {isMasterAdmin && <TabsTrigger value="admin-assignment">Admin Assignment</TabsTrigger>}
-              {isMasterAdmin && <TabsTrigger value="questions">Registration Questions</TabsTrigger>}
-              {isMasterAdmin && <TabsTrigger value="new-year">New Year Management</TabsTrigger>}
-            </TabsList>
+          <Tabs defaultValue="approvals" className="space-y-4 sm:space-y-6">
+            <div className="overflow-x-auto">
+              <TabsList className="grid w-max min-w-full grid-cols-11 gap-1 p-1">
+                {hasPermission('canApproveUsers') && <TabsTrigger value="approvals" className="text-xs sm:text-sm px-2 sm:px-3">User Approvals</TabsTrigger>}
+                {hasPermission('canViewUsers') && <TabsTrigger value="users" className="text-xs sm:text-sm px-2 sm:px-3">Users Data</TabsTrigger>}
+                {hasPermission('canViewUsers') && <TabsTrigger value="overview" className="text-xs sm:text-sm px-2 sm:px-3">Users Overview</TabsTrigger>}
+                {hasPermission('canManagePayments') && <TabsTrigger value="payments" className="text-xs sm:text-sm px-2 sm:px-3">Payment Mgmt</TabsTrigger>}
+                {hasPermission('canManagePayments') && <TabsTrigger value="payment-submissions" className="text-xs sm:text-sm px-2 sm:px-3">Payment Subs</TabsTrigger>}
+                {hasPermission('canManageBenefits') && <TabsTrigger value="benefits" className="text-xs sm:text-sm px-2 sm:px-3">Benefits</TabsTrigger>}
+                {hasPermission('canSendNotifications') && <TabsTrigger value="notifications" className="text-xs sm:text-sm px-2 sm:px-3">Notifications</TabsTrigger>}
+                {hasPermission('canSendNotifications') && <TabsTrigger value="messages" className="text-xs sm:text-sm px-2 sm:px-3">Messages</TabsTrigger>}
+                {(isMasterAdmin || currentUser?.role === 'admin') && <TabsTrigger value="import" className="text-xs sm:text-sm px-2 sm:px-3">Import</TabsTrigger>}
+                {isMasterAdmin && <TabsTrigger value="admin-assignment" className="text-xs sm:text-sm px-2 sm:px-3">Admin Assign</TabsTrigger>}
+                {isMasterAdmin && <TabsTrigger value="questions" className="text-xs sm:text-sm px-2 sm:px-3">Questions</TabsTrigger>}
+                {isMasterAdmin && <TabsTrigger value="new-year" className="text-xs sm:text-sm px-2 sm:px-3">New Year</TabsTrigger>}
+              </TabsList>
+            </div>
 
             {/* User Approvals Tab */}
             {hasPermission('canApproveUsers') && (
-              <TabsContent value="approvals" className="space-y-6">
+              <TabsContent value="approvals" className="space-y-4 sm:space-y-6">
                 <Card>
                   <CardHeader>
                     <CardTitle>Pending Approvals</CardTitle>
@@ -556,33 +561,36 @@ const AdminDashboard: React.FC = () => {
                     <div className="space-y-4">
                       {visibleUsers.filter(user => user.status === 'pending').map(user => (
                         <div key={user.id} className="border rounded-lg p-4">
-                          <div className="flex justify-between items-start">
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2">
+                          <div className="flex flex-col space-y-4 lg:flex-row lg:justify-between lg:items-start lg:space-y-0">
+                            <div className="space-y-2 flex-1">
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                                 <h3 className="font-semibold">{user.fullName}</h3>
                                 {user.isReregistration && (
-                                  <Badge className="bg-orange-500">Re-registration</Badge>
+                                  <Badge className="bg-orange-500 w-fit">Re-registration</Badge>
                                 )}
                               </div>
-                              <p className="text-sm text-gray-600">{user.email}</p>
-                              <p className="text-sm text-gray-600">Phone: {user.mobileNo}</p>
-                              <p className="text-sm text-gray-600">Emirates ID: {user.emiratesId}</p>
-                              <p className="text-sm text-gray-600">Emirate: {user.emirate}</p>
-                              <p className="text-sm text-gray-600">Mandalam: {user.mandalam}</p>
-                              <p className="text-sm text-gray-600">
-                                Registered: {new Date(user.registrationDate).toLocaleDateString()} at {new Date(user.registrationDate).toLocaleTimeString()}
-                              </p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-600">
+                                <p>{user.email}</p>
+                                <p>Phone: {user.mobileNo}</p>
+                                <p>Emirates ID: {user.emiratesId}</p>
+                                <p>Emirate: {user.emirate}</p>
+                                <p>Mandalam: {user.mandalam}</p>
+                                <p className="sm:col-span-2">
+                                  Registered: {new Date(user.registrationDate).toLocaleDateString()} at {new Date(user.registrationDate).toLocaleTimeString()}
+                                </p>
+                              </div>
                             </div>
-                            <div className="flex space-x-2">
+                            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 lg:ml-4">
                               <Button
                                 onClick={() => approveUser(user.id)}
-                                className="bg-green-600 hover:bg-green-700"
+                                className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
                               >
                                 Approve
                               </Button>
                               <Button
                                 onClick={() => rejectUser(user.id)}
                                 variant="destructive"
+                                className="w-full sm:w-auto"
                               >
                                 Reject
                               </Button>
@@ -601,7 +609,7 @@ const AdminDashboard: React.FC = () => {
 
             {/* Users Data Tab */}
             {hasPermission('canViewUsers') && (
-              <TabsContent value="users" className="space-y-6">
+              <TabsContent value="users" className="space-y-4 sm:space-y-6">
                 <UsersDataTable 
                   users={visibleUsers}
                   onUpdateUser={updateUser}
@@ -615,14 +623,14 @@ const AdminDashboard: React.FC = () => {
 
             {/* Users Overview Tab */}
             {hasPermission('canViewUsers') && (
-              <TabsContent value="overview" className="space-y-6">
+              <TabsContent value="overview" className="space-y-4 sm:space-y-6">
                 <UsersOverview users={visibleUsers} />
               </TabsContent>
             )}
 
             {/* Payment Management Tab */}
             {hasPermission('canManagePayments') && (
-              <TabsContent value="payments" className="space-y-6">
+              <TabsContent value="payments" className="space-y-4 sm:space-y-6">
                 <Card>
                   <CardHeader>
                     <CardTitle>Payment Management</CardTitle>
@@ -644,9 +652,9 @@ const AdminDashboard: React.FC = () => {
                     <div className="space-y-4">
                       {visibleUsers.filter(user => user.status === 'approved').map(user => (
                         <div key={user.id} className="border rounded-lg p-4">
-                          <div className="flex justify-between items-start">
-                            <div className="space-y-2">
-                              <div className="flex items-center space-x-2">
+                          <div className="flex flex-col space-y-4 lg:flex-row lg:justify-between lg:items-start lg:space-y-0">
+                            <div className="space-y-2 flex-1">
+                              <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
                                 <h3 className="font-semibold">{user.fullName}</h3>
                                 <Badge className={user.paymentStatus ? 'bg-green-500' : 'bg-gray-500'}>
                                   {user.paymentStatus ? 'Paid' : 'Unpaid'}
@@ -660,10 +668,10 @@ const AdminDashboard: React.FC = () => {
                                 <p className="text-sm text-blue-600">Remarks: {user.paymentRemarks}</p>
                               )}
                             </div>
-                            <div className="flex items-center space-x-4">
+                            <div className="flex items-center lg:ml-4">
                               <Dialog>
                                 <DialogTrigger asChild>
-                                  <Button variant="outline">Update Payment</Button>
+                                  <Button variant="outline" className="w-full lg:w-auto">Update Payment</Button>
                                 </DialogTrigger>
                                 <DialogContent>
                                   <DialogHeader>
@@ -703,7 +711,7 @@ const AdminDashboard: React.FC = () => {
                     
                     {/* Total Amount Display */}
                     <div className="mt-6 text-center">
-                      <div className="text-3xl font-bold text-green-600">
+                      <div className="text-2xl sm:text-3xl font-bold text-green-600">
                         Total Collected: AED {stats.totalPaymentAmount}
                       </div>
                       <p className="text-gray-600">From {stats.paid} paid members</p>
@@ -715,7 +723,7 @@ const AdminDashboard: React.FC = () => {
 
             {/* Payment Submissions Tab */}
             {hasPermission('canManagePayments') && (
-              <TabsContent value="payment-submissions" className="space-y-6">
+              <TabsContent value="payment-submissions" className="space-y-4 sm:space-y-6">
                 <Card>
                   <CardHeader>
                     <CardTitle>Payment Submissions</CardTitle>
@@ -737,9 +745,9 @@ const AdminDashboard: React.FC = () => {
                     <div className="space-y-4">
                       {visibleUsers.filter(user => user.paymentSubmission?.submitted).map(user => (
                         <div key={user.id} className="border rounded-lg p-4">
-                          <div className="flex justify-between items-start">
-                            <div className="space-y-2">
-                              <div className="flex items-center space-x-2">
+                          <div className="flex flex-col space-y-4 lg:flex-row lg:justify-between lg:items-start lg:space-y-0">
+                            <div className="space-y-2 flex-1">
+                              <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
                                 <h3 className="font-semibold">{user.fullName}</h3>
                                 <Badge className={
                                   user.paymentSubmission?.approvalStatus === 'approved' ? 'bg-green-500' :
@@ -770,12 +778,12 @@ const AdminDashboard: React.FC = () => {
                               )}
                             </div>
                             
-                            <div className="flex space-x-2">
+                            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 lg:ml-4">
                               {user.paymentSubmission?.approvalStatus === 'pending' ? (
                                 <>
                                   <Dialog>
                                     <DialogTrigger asChild>
-                                      <Button className="bg-green-600 hover:bg-green-700">
+                                      <Button className="bg-green-600 hover:bg-green-700 w-full sm:w-auto">
                                         Approve
                                       </Button>
                                     </DialogTrigger>
@@ -804,7 +812,7 @@ const AdminDashboard: React.FC = () => {
                                   
                                   <Dialog>
                                     <DialogTrigger asChild>
-                                      <Button variant="destructive">
+                                      <Button variant="destructive" className="w-full sm:w-auto">
                                         Decline
                                       </Button>
                                     </DialogTrigger>
@@ -845,6 +853,7 @@ const AdminDashboard: React.FC = () => {
                                 <Button 
                                   onClick={() => resetPaymentSubmission(user.id)}
                                   variant="outline"
+                                  className="w-full sm:w-auto"
                                 >
                                   Reset Submission
                                 </Button>
@@ -864,14 +873,14 @@ const AdminDashboard: React.FC = () => {
 
             {/* Benefit Management Tab */}
             {hasPermission('canManageBenefits') && (
-              <TabsContent value="benefits" className="space-y-6">
+              <TabsContent value="benefits" className="space-y-4 sm:space-y-6">
                 <EnhancedBenefitManager users={visibleUsers} onUpdateUser={updateUser} />
               </TabsContent>
             )}
 
             {/* Notifications Tab */}
             {hasPermission('canSendNotifications') && (
-              <TabsContent value="notifications" className="space-y-6">
+              <TabsContent value="notifications" className="space-y-4 sm:space-y-6">
                 <NotificationManager 
                   users={visibleUsers}
                   onUpdateUser={updateUser}
@@ -880,16 +889,26 @@ const AdminDashboard: React.FC = () => {
               </TabsContent>
             )}
 
+            {/* Messages Tab */}
+            {hasPermission('canSendNotifications') && (
+              <TabsContent value="messages" className="space-y-4 sm:space-y-6">
+                <EnhancedMessageManager 
+                  users={visibleUsers}
+                  currentUser={currentUser!}
+                />
+              </TabsContent>
+            )}
+
             {/* Import Users Tab */}
             {(isMasterAdmin || currentUser?.role === 'admin') && (
-              <TabsContent value="import" className="space-y-6">
+              <TabsContent value="import" className="space-y-4 sm:space-y-6">
                 <CSVImport onImportComplete={handleImportComplete} />
               </TabsContent>
             )}
 
             {/* Admin Assignment Tab */}
             {isMasterAdmin && (
-              <TabsContent value="admin-assignment" className="space-y-6">
+              <TabsContent value="admin-assignment" className="space-y-4 sm:space-y-6">
                 <CustomAdminManager 
                   users={users}
                   onUpdateUser={updateUser}
@@ -899,14 +918,14 @@ const AdminDashboard: React.FC = () => {
 
             {/* Registration Questions Tab */}
             {isMasterAdmin && (
-              <TabsContent value="questions" className="space-y-6">
+              <TabsContent value="questions" className="space-y-4 sm:space-y-6">
                 <RegistrationQuestionsManager />
               </TabsContent>
             )}
 
             {/* New Year Management Tab */}
             {isMasterAdmin && (
-              <TabsContent value="new-year" className="space-y-6">
+              <TabsContent value="new-year" className="space-y-4 sm:space-y-6">
                 <NewYearManager 
                   users={users}
                   onNewYear={handleNewYear}

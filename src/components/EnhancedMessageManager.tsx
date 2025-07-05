@@ -10,7 +10,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Send, MessageSquare, Users, Eye } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 
 interface MessageTemplate {
   id: string;
@@ -26,7 +25,22 @@ interface EnhancedMessageManagerProps {
 }
 
 const EnhancedMessageManager: React.FC<EnhancedMessageManagerProps> = ({ users, currentUser }) => {
-  const [templates, setTemplates] = useState<MessageTemplate[]>([]);
+  const [templates, setTemplates] = useState<MessageTemplate[]>([
+    {
+      id: '1',
+      template_name: 'Payment Reminder',
+      subject: 'Payment Reminder - {{year}} Membership',
+      message_content: 'Dear {{name}},\n\nThis is a reminder that your {{year}} membership payment is pending. Please complete your payment at your earliest convenience.\n\nRegards,\n{{mandalam}} Committee',
+      variables: ['name', 'year', 'mandalam']
+    },
+    {
+      id: '2',
+      template_name: 'Welcome Message',
+      subject: 'Welcome to {{year}} Membership',
+      message_content: 'Dear {{name}},\n\nWelcome to our community! Your registration number is {{regNo}}. We look forward to your participation.\n\nBest regards,\n{{mandalam}} Committee',
+      variables: ['name', 'year', 'regNo', 'mandalam']
+    }
+  ]);
   const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(null);
   const [messageContent, setMessageContent] = useState('');
   const [subject, setSubject] = useState('');
@@ -35,33 +49,6 @@ const EnhancedMessageManager: React.FC<EnhancedMessageManagerProps> = ({ users, 
   const [mandalamFilter, setMandalamFilter] = useState('all');
   const [previewMessage, setPreviewMessage] = useState('');
   const { toast } = useToast();
-
-  useEffect(() => {
-    fetchTemplates();
-  }, []);
-
-  const fetchTemplates = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('message_templates')
-        .select('*');
-
-      if (error) throw error;
-      
-      // Transform the data to match our interface
-      const transformedTemplates: MessageTemplate[] = (data || []).map(template => ({
-        id: template.id,
-        template_name: template.template_name,
-        subject: template.subject,
-        message_content: template.message_content,
-        variables: Array.isArray(template.variables) ? template.variables as string[] : []
-      }));
-      
-      setTemplates(transformedTemplates);
-    } catch (error) {
-      console.error('Error fetching templates:', error);
-    }
-  };
 
   const handleTemplateSelect = (template: MessageTemplate) => {
     setSelectedTemplate(template);
@@ -83,7 +70,7 @@ const EnhancedMessageManager: React.FC<EnhancedMessageManagerProps> = ({ users, 
     }
 
     if (sendToUnpaid) {
-      filtered = filtered.filter(user => !user.paymentStatus);
+      filtered = filtered.filter(user => !user.paymentStatus && user.status === 'approved');
     }
 
     return filtered;
@@ -119,7 +106,16 @@ const EnhancedMessageManager: React.FC<EnhancedMessageManagerProps> = ({ users, 
       return;
     }
 
-    // Simulate sending messages
+    if (!subject.trim() || !messageContent.trim()) {
+      toast({
+        title: "Missing Content",
+        description: "Please provide both subject and message content.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Simulate sending messages by adding notifications to users
     filteredUsers.forEach(user => {
       const personalizedMessage = replaceVariables(messageContent, user);
       const personalizedSubject = replaceVariables(subject, user);
@@ -134,6 +130,9 @@ const EnhancedMessageManager: React.FC<EnhancedMessageManagerProps> = ({ users, 
         fromAdmin: currentUser.fullName,
       };
 
+      if (!user.notifications) {
+        user.notifications = [];
+      }
       user.notifications.push(notification);
     });
 
@@ -202,15 +201,20 @@ const EnhancedMessageManager: React.FC<EnhancedMessageManagerProps> = ({ users, 
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id="unpaid-only"
-            checked={sendToUnpaid}
-            onCheckedChange={(checked) => setSendToUnpaid(checked === true)}
-          />
-          <label htmlFor="unpaid-only" className="text-sm">
-            Send only to users who haven't paid
-          </label>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="unpaid-only"
+              checked={sendToUnpaid}
+              onCheckedChange={(checked) => setSendToUnpaid(checked === true)}
+            />
+            <label htmlFor="unpaid-only" className="text-sm">
+              Send only to users who haven't paid
+            </label>
+          </div>
+          <div className="text-sm text-gray-600">
+            {sendToUnpaid ? `${filteredUsers.filter(u => !u.paymentStatus).length} unpaid users` : `${filteredUsers.length} total users`}
+          </div>
         </div>
 
         <div>
@@ -235,15 +239,20 @@ const EnhancedMessageManager: React.FC<EnhancedMessageManagerProps> = ({ users, 
           </p>
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             <span className="text-sm">Recipients: {filteredUsers.length}</span>
+            {sendToUnpaid && (
+              <span className="text-sm text-orange-600">
+                (Unpaid: {filteredUsers.filter(u => !u.paymentStatus).length})
+              </span>
+            )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <Dialog>
               <DialogTrigger asChild>
-                <Button variant="outline" onClick={handlePreview}>
+                <Button variant="outline" onClick={handlePreview} className="w-full sm:w-auto">
                   <Eye className="h-4 w-4 mr-2" />
                   Preview
                 </Button>
@@ -267,7 +276,11 @@ const EnhancedMessageManager: React.FC<EnhancedMessageManagerProps> = ({ users, 
                 </div>
               </DialogContent>
             </Dialog>
-            <Button onClick={handleSendMessage} disabled={!messageContent || !subject}>
+            <Button 
+              onClick={handleSendMessage} 
+              disabled={!messageContent || !subject || filteredUsers.length === 0}
+              className="w-full sm:w-auto"
+            >
               <Send className="h-4 w-4 mr-2" />
               Send Message
             </Button>
