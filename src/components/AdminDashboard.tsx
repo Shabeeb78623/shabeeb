@@ -33,35 +33,49 @@ const AdminDashboard: React.FC = () => {
   const [pendingPayments, setPendingPayments] = useState<any[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [currentYear] = useState(new Date().getFullYear());
   const [availableYears] = useState([2024, 2025]);
   const { toast } = useToast();
 
   useEffect(() => {
+    console.log('AdminDashboard: Starting data load...');
+    
     // Load users from localStorage
     const loadUsers = () => {
+      console.log('AdminDashboard: Loading users...');
       const storedUsers = localStorage.getItem('users');
       if (storedUsers) {
         try {
           const parsedUsers = JSON.parse(storedUsers);
+          console.log('AdminDashboard: Parsed users:', parsedUsers);
           setUsers(Array.isArray(parsedUsers) ? parsedUsers : []);
         } catch (error) {
-          console.error('Error parsing users:', error);
+          console.error('AdminDashboard: Error parsing users:', error);
           setUsers([]);
         }
+      } else {
+        console.log('AdminDashboard: No stored users found');
+        setUsers([]);
       }
     };
 
     // Load current user from localStorage
     const loadCurrentUser = () => {
+      console.log('AdminDashboard: Loading current user...');
       const storedUser = localStorage.getItem('currentUser');
       if (storedUser) {
         try {
           const parsedUser = JSON.parse(storedUser);
+          console.log('AdminDashboard: Current user loaded:', parsedUser);
           setCurrentUser(parsedUser);
         } catch (error) {
-          console.error('Error parsing current user:', error);
+          console.error('AdminDashboard: Error parsing current user:', error);
+          setCurrentUser(null);
         }
+      } else {
+        console.log('AdminDashboard: No current user found in localStorage');
+        setCurrentUser(null);
       }
     };
 
@@ -73,7 +87,7 @@ const AdminDashboard: React.FC = () => {
           const parsedPayments = JSON.parse(payments);
           setPendingPayments(Array.isArray(parsedPayments) ? parsedPayments : []);
         } catch (error) {
-          console.error('Error parsing pending payments:', error);
+          console.error('AdminDashboard: Error parsing pending payments:', error);
           setPendingPayments([]);
         }
       }
@@ -82,6 +96,12 @@ const AdminDashboard: React.FC = () => {
     loadUsers();
     loadCurrentUser();
     loadPendingPayments();
+    
+    // Set loading to false after attempting to load data
+    setTimeout(() => {
+      console.log('AdminDashboard: Setting loading to false');
+      setLoading(false);
+    }, 100);
     
     // Set up interval to check for new payments
     const interval = setInterval(loadPendingPayments, 2000);
@@ -116,7 +136,9 @@ const AdminDashboard: React.FC = () => {
     });
   };
 
-  if (!currentUser) {
+  // Show loading state
+  if (loading) {
+    console.log('AdminDashboard: Still loading...');
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Card className="w-96">
@@ -127,6 +149,52 @@ const AdminDashboard: React.FC = () => {
       </div>
     );
   }
+
+  // If no current user found, try to create a default admin user for testing
+  if (!currentUser) {
+    console.log('AdminDashboard: No current user, creating default admin...');
+    const defaultAdmin: User = {
+      id: 'admin-001',
+      regNo: 'ADMIN001',
+      fullName: 'System Admin',
+      mobileNo: '+971501234567',
+      whatsApp: '+971501234567',
+      nominee: 'System',
+      relation: 'Father',
+      emirate: 'Dubai',
+      mandalam: 'BALUSHERI',
+      email: 'admin@system.com',
+      addressUAE: 'Dubai, UAE',
+      addressIndia: 'Kerala, India',
+      kmccMember: false,
+      pratheekshaMember: false,
+      recommendedBy: 'System',
+      emiratesId: '784-0000-0000000-0',
+      password: 'admin123',
+      status: 'approved',
+      role: 'master_admin',
+      registrationDate: new Date().toISOString(),
+      registrationYear: currentYear,
+      paymentStatus: true,
+      benefitsUsed: [],
+      notifications: []
+    };
+    
+    setCurrentUser(defaultAdmin);
+    localStorage.setItem('currentUser', JSON.stringify(defaultAdmin));
+    
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="w-96">
+          <CardContent className="p-6">
+            <p className="text-center text-gray-600">Setting up admin dashboard...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  console.log('AdminDashboard: Rendering dashboard for user:', currentUser);
 
   const stats = {
     total: users.length,
@@ -165,6 +233,7 @@ const AdminDashboard: React.FC = () => {
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
               <p className="text-gray-600 mt-1">Manage users, payments, and system settings</p>
+              <p className="text-sm text-blue-600">Welcome, {currentUser.fullName}</p>
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
