@@ -1,415 +1,912 @@
-
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { User } from '../types/user';
-import UsersOverview from './UsersOverview';
-import UsersDataTable from './UsersDataTable';
-import EnhancedPaymentManager from './EnhancedPaymentManager';
-import EnhancedBenefitManager from './EnhancedBenefitManager';
-import EnhancedMessageManager from './EnhancedMessageManager';
-import CustomAdminManager from './CustomAdminManager';
-import NewYearManager from './NewYearManager';
-import RegistrationQuestionsManager from './RegistrationQuestionsManager';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  Users, 
-  UserCheck, 
-  CreditCard, 
-  Gift, 
-  MessageSquare, 
-  Settings, 
-  Calendar,
-  HelpCircle,
-  RefreshCw,
-  FileText,
-  Shield
-} from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import UsersDataTable from './UsersDataTable';
+import UsersOverview from './UsersOverview';
+import EnhancedBenefitManager from './EnhancedBenefitManager';
+import NotificationManager from './NotificationManager';
+import CustomAdminManager from './CustomAdminManager';
+import CSVImport from './CSVImport';
+import RegistrationQuestionsManager from './RegistrationQuestionsManager';
+import NewYearManager from './NewYearManager';
+import * as XLSX from 'xlsx';
+import { Search } from 'lucide-react';
 
 const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('overview');
-  const [pendingPayments, setPendingPayments] = useState<any[]>([]);
+  const { logout, isMasterAdmin, currentUser, currentYear, availableYears, switchYear, createNewYear, getCurrentYearUsers } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [currentYear] = useState(new Date().getFullYear());
-  const [availableYears] = useState([2024, 2025]);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [paymentRemarks, setPaymentRemarks] = useState('');
+  const [paymentAmount, setPaymentAmount] = useState<number>(0);
+  const [confirmAction, setConfirmAction] = useState<{ action: () => void; title: string; description: string } | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    console.log('AdminDashboard: Starting data load...');
-    
-    // Load users from localStorage
-    const loadUsers = () => {
-      console.log('AdminDashboard: Loading users...');
-      const storedUsers = localStorage.getItem('users');
-      if (storedUsers) {
-        try {
-          const parsedUsers = JSON.parse(storedUsers);
-          console.log('AdminDashboard: Parsed users:', parsedUsers);
-          setUsers(Array.isArray(parsedUsers) ? parsedUsers : []);
-        } catch (error) {
-          console.error('AdminDashboard: Error parsing users:', error);
-          setUsers([]);
-        }
-      } else {
-        console.log('AdminDashboard: No stored users found');
-        setUsers([]);
-      }
-    };
-
-    // Load current user from localStorage
-    const loadCurrentUser = () => {
-      console.log('AdminDashboard: Loading current user...');
-      const storedUser = localStorage.getItem('currentUser');
-      if (storedUser) {
-        try {
-          const parsedUser = JSON.parse(storedUser);
-          console.log('AdminDashboard: Current user loaded:', parsedUser);
-          setCurrentUser(parsedUser);
-        } catch (error) {
-          console.error('AdminDashboard: Error parsing current user:', error);
-          setCurrentUser(null);
-        }
-      } else {
-        console.log('AdminDashboard: No current user found in localStorage');
-        setCurrentUser(null);
-      }
-    };
-
-    // Load pending payments from localStorage
-    const loadPendingPayments = () => {
-      const payments = localStorage.getItem('pendingPayments');
-      if (payments) {
-        try {
-          const parsedPayments = JSON.parse(payments);
-          setPendingPayments(Array.isArray(parsedPayments) ? parsedPayments : []);
-        } catch (error) {
-          console.error('AdminDashboard: Error parsing pending payments:', error);
-          setPendingPayments([]);
-        }
-      }
-    };
-
     loadUsers();
-    loadCurrentUser();
-    loadPendingPayments();
-    
-    // Set loading to false after attempting to load data
-    setTimeout(() => {
-      console.log('AdminDashboard: Setting loading to false');
-      setLoading(false);
-    }, 100);
-    
-    // Set up interval to check for new payments
-    const interval = setInterval(loadPendingPayments, 2000);
-    return () => clearInterval(interval);
-  }, []);
+  }, [currentYear]);
 
-  const handleUpdateUser = (updatedUser: User) => {
+  const loadUsers = () => {
+    const currentUsers = getCurrentYearUsers();
+    setUsers(currentUsers);
+  };
+
+  const updateUser = (updatedUser: User) => {
     const updatedUsers = users.map(user => 
       user.id === updatedUser.id ? updatedUser : user
     );
     setUsers(updatedUsers);
+    
+    // Update yearly data
+    const yearlyData = JSON.parse(localStorage.getItem('yearlyData') || '[]');
+    const updatedYearlyData = yearlyData.map((data: any) => 
+      data.year === currentYear ? { ...data, users: updatedUsers } : data
+    );
+    localStorage.setItem('yearlyData', JSON.stringify(updatedYearlyData));
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
+  };
+
+  const deleteUser = (userId: string) => {
+    const updatedUsers = users.filter(user => user.id !== userId);
+    setUsers(updatedUsers);
+    
+    // Update yearly data
+    const yearlyData = JSON.parse(localStorage.getItem('yearlyData') || '[]');
+    const updatedYearlyData = yearlyData.map((data: any) => 
+      data.year === currentYear ? { ...data, users: updatedUsers } : data
+    );
+    localStorage.setItem('yearlyData', JSON.stringify(updatedYearlyData));
     localStorage.setItem('users', JSON.stringify(updatedUsers));
     
-    // Update current user if it's the same user
-    if (currentUser && currentUser.id === updatedUser.id) {
-      setCurrentUser(updatedUser);
-      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-    }
-  };
-
-  const handleUpdateUsers = (updatedUsers: User[]) => {
-    setUsers(updatedUsers);
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-  };
-
-  const handleNewYear = (year: number) => {
-    // Handle new year logic
-    console.log('New year:', year);
     toast({
-      title: "New Year Created",
-      description: `New year ${year} has been created successfully.`,
+      title: "User Deleted",
+      description: "User has been permanently deleted.",
     });
   };
 
-  // Show loading state
-  if (loading) {
-    console.log('AdminDashboard: Still loading...');
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="w-96">
-          <CardContent className="p-6">
-            <p className="text-center text-gray-600">Loading admin dashboard...</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // If no current user found, try to create a default admin user for testing
-  if (!currentUser) {
-    console.log('AdminDashboard: No current user, creating default admin...');
-    const defaultAdmin: User = {
-      id: 'admin-001',
-      regNo: 'ADMIN001',
-      fullName: 'System Admin',
-      mobileNo: '+971501234567',
-      whatsApp: '+971501234567',
-      nominee: 'System',
-      relation: 'Father',
-      emirate: 'Dubai',
-      mandalam: 'BALUSHERI',
-      email: 'admin@system.com',
-      addressUAE: 'Dubai, UAE',
-      addressIndia: 'Kerala, India',
-      kmccMember: false,
-      pratheekshaMember: false,
-      recommendedBy: 'System',
-      emiratesId: '784-0000-0000000-0',
-      password: 'admin123',
-      status: 'approved',
-      role: 'master_admin',
-      registrationDate: new Date().toISOString(),
-      registrationYear: currentYear,
-      paymentStatus: true,
-      benefitsUsed: [],
-      notifications: []
-    };
-    
-    setCurrentUser(defaultAdmin);
-    localStorage.setItem('currentUser', JSON.stringify(defaultAdmin));
-    
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="w-96">
-          <CardContent className="p-6">
-            <p className="text-center text-gray-600">Setting up admin dashboard...</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  console.log('AdminDashboard: Rendering dashboard for user:', currentUser);
-
-  const stats = {
-    total: users.length,
-    newUsers: users.filter(user => user.registrationYear === currentYear).length,
-    reRegistrations: users.filter(user => user.registrationYear === currentYear && user.isReregistration).length,
-    pending: users.filter(user => user.status === 'pending').length,
-    approved: users.filter(user => user.status === 'approved').length,
-    rejected: users.filter(user => user.status === 'rejected').length,
-    paid: users.filter(user => user.paymentStatus === true).length,
-    admins: users.filter(user => user.role === 'admin' || user.role === 'master_admin' || user.role === 'mandalam_admin').length,
-    collected: users.filter(user => user.paymentStatus === true).reduce((total, user) => {
-      return total + (user.isReregistration ? 50 : 60);
-    }, 0)
+  const hasPermission = (permission: keyof NonNullable<User['customPermissions']>): boolean => {
+    if (isMasterAdmin || currentUser?.role === 'admin') return true;
+    if (currentUser?.role === 'mandalam_admin') {
+      // Mandalam admin has most permissions for their mandalam
+      return ['canViewUsers', 'canEditUsers', 'canApproveUsers', 'canManagePayments'].includes(permission);
+    }
+    if (currentUser?.role === 'custom_admin' && currentUser.customPermissions) {
+      return currentUser.customPermissions[permission] === true;
+    }
+    return false;
   };
 
-  const tabsConfig = [
-    { id: 'overview', label: 'Overview', icon: Users },
-    { id: 'users', label: 'Users', icon: UserCheck },
-    { id: 'payments', label: 'Payments', icon: CreditCard, badge: pendingPayments.length },
-    { id: 'benefits', label: 'Benefits', icon: Gift },
-    { id: 'messaging', label: 'Messages', icon: MessageSquare },
-    { id: 'admins', label: 'Admins', icon: Shield },
-    { id: 'newyear', label: 'New Year', icon: Calendar },
-    { id: 'questions', label: 'Questions', icon: HelpCircle },
-    { id: 'reports', label: 'Reports', icon: FileText },
-    { id: 'import', label: 'Import', icon: RefreshCw },
-    { id: 'settings', label: 'Settings', icon: Settings }
-  ];
+  const getVisibleUsers = () => {
+    let filteredUsers = users;
+    
+    if (currentUser?.role === 'mandalam_admin' && currentUser.mandalamAccess) {
+      filteredUsers = filteredUsers.filter(user => user.mandalam === currentUser.mandalamAccess);
+    } else if (currentUser?.role === 'custom_admin' && currentUser.customPermissions?.mandalamAccess) {
+      filteredUsers = filteredUsers.filter(user => 
+        currentUser.customPermissions!.mandalamAccess!.includes(user.mandalam)
+      );
+    }
+    
+    return filteredUsers;
+  };
+
+  const confirmAndExecute = (action: () => void, title: string, description: string) => {
+    setConfirmAction({ action, title, description });
+  };
+
+  const executeConfirmedAction = () => {
+    if (confirmAction) {
+      confirmAction.action();
+      setConfirmAction(null);
+    }
+  };
+
+  const rejectUser = (userId: string) => {
+    if (!hasPermission('canApproveUsers')) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to reject users.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const user = users.find(u => u.id === userId);
+    if (user) {
+      confirmAndExecute(
+        () => {
+          const updatedUser = { ...user, status: 'rejected' as const };
+          updateUser(updatedUser);
+          toast({
+            title: "User Rejected",
+            description: `${user.fullName} has been rejected.`,
+          });
+        },
+        "Reject User",
+        `Are you sure you want to reject ${user.fullName}?`
+      );
+    }
+  };
+
+  const togglePayment = (userId: string, amount: number = 0, remarks: string = '') => {
+    if (!hasPermission('canManagePayments')) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to manage payments.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const user = users.find(u => u.id === userId);
+    if (user) {
+      confirmAndExecute(
+        () => {
+          const updatedUser = { 
+            ...user, 
+            paymentStatus: !user.paymentStatus,
+            paymentAmount: amount || user.paymentAmount,
+            paymentRemarks: remarks || user.paymentRemarks
+          };
+          updateUser(updatedUser);
+          toast({
+            title: "Payment Status Updated",
+            description: `Payment status for ${user.fullName} has been updated.`,
+          });
+        },
+        "Update Payment Status",
+        `Are you sure you want to ${user.paymentStatus ? 'remove' : 'mark'} payment for ${user.fullName}?`
+      );
+    }
+  };
+
+  const approveUser = (userId: string) => {
+    if (!hasPermission('canApproveUsers')) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to approve users.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const user = users.find(u => u.id === userId);
+    if (user) {
+      confirmAndExecute(
+        () => {
+          const updatedUser = { 
+            ...user, 
+            status: 'approved' as const,
+            approvalDate: new Date().toISOString()
+          };
+          updateUser(updatedUser);
+          toast({
+            title: "User Approved",
+            description: `${user.fullName} has been approved.`,
+          });
+        },
+        "Approve User",
+        `Are you sure you want to approve ${user.fullName}?`
+      );
+    }
+  };
+
+  const approvePaymentSubmission = (userId: string, remarks: string = '') => {
+    if (!hasPermission('canManagePayments')) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to manage payment submissions.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const user = users.find(u => u.id === userId);
+    if (user && user.paymentSubmission) {
+      confirmAndExecute(
+        () => {
+          const updatedUser = {
+            ...user,
+            paymentSubmission: {
+              ...user.paymentSubmission,
+              approvalStatus: 'approved' as const,
+              adminRemarks: remarks
+            },
+            paymentStatus: true,
+            paymentAmount: user.paymentSubmission.amount || 0
+          };
+          updateUser(updatedUser);
+          toast({
+            title: "Payment Approved",
+            description: `Payment for ${user.fullName} has been approved.`,
+          });
+        },
+        "Approve Payment Submission",
+        `Are you sure you want to approve payment submission for ${user.fullName}?`
+      );
+    }
+  };
+
+  const declinePaymentSubmission = (userId: string, remarks: string = '') => {
+    if (!hasPermission('canManagePayments')) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to manage payment submissions.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const user = users.find(u => u.id === userId);
+    if (user && user.paymentSubmission) {
+      confirmAndExecute(
+        () => {
+          const updatedUser = {
+            ...user,
+            paymentSubmission: {
+              ...user.paymentSubmission,
+              approvalStatus: 'declined' as const,
+              adminRemarks: remarks
+            }
+          };
+          updateUser(updatedUser);
+          toast({
+            title: "Payment Declined",
+            description: `Payment for ${user.fullName} has been declined.`,
+          });
+        },
+        "Decline Payment Submission",
+        `Are you sure you want to decline payment submission for ${user.fullName}?`
+      );
+    }
+  };
+
+  const resetPaymentSubmission = (userId: string) => {
+    if (!hasPermission('canManagePayments')) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to reset payment submissions.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const user = users.find(u => u.id === userId);
+    if (user) {
+      confirmAndExecute(
+        () => {
+          const updatedUser = {
+            ...user,
+            paymentSubmission: {
+              submitted: false,
+              approvalStatus: 'pending' as const,
+              userRemarks: '',
+              adminRemarks: ''
+            }
+          };
+          updateUser(updatedUser);
+          toast({
+            title: "Payment Reset",
+            description: `Payment submission for ${user.fullName} has been reset.`,
+          });
+        },
+        "Reset Payment Submission",
+        `Are you sure you want to reset payment submission for ${user.fullName}?`
+      );
+    }
+  };
+
+  const exportToExcel = () => {
+    const worksheet = XLSX.utils.json_to_sheet(users.map(user => ({
+      'Reg No': user.regNo,
+      'Full Name': user.fullName,
+      'Mobile No': user.mobileNo,
+      'WhatsApp': user.whatsApp,
+      'Email': user.email,
+      'Emirates ID': user.emiratesId,
+      'Emirate': user.emirate,
+      'Mandalam': user.mandalam,
+      'Nominee': user.nominee,
+      'Relation': user.relation,
+      'Address UAE': user.addressUAE,
+      'Address India': user.addressIndia,
+      'KMCC Member': user.kmccMember ? 'Yes' : 'No',
+      'KMCC Membership No': user.kmccMembershipNumber || '',
+      'Pratheeksha Member': user.pratheekshaMember ? 'Yes' : 'No',
+      'Pratheeksha Membership No': user.pratheekshaMembershipNumber || '',
+      'Recommended By': user.recommendedBy,
+      'Status': user.status,
+      'Role': user.role,
+      'Registration Date': new Date(user.registrationDate).toLocaleDateString(),
+      'Payment Status': user.paymentStatus ? 'Paid' : 'Unpaid',
+      'Payment Amount': user.paymentAmount || 0,
+      'Payment Remarks': user.paymentRemarks || ''
+    })));
+    
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Users');
+    XLSX.writeFile(workbook, `users_export_${new Date().toISOString().split('T')[0]}.xlsx`);
+    
+    toast({
+      title: "Export Successful",
+      description: "User data has been exported to Excel.",
+    });
+  };
+
+  const saveUserEdit = () => {
+    if (editingUser) {
+      updateUser(editingUser);
+      setEditingUser(null);
+      toast({
+        title: "User Updated",
+        description: "User information has been updated successfully.",
+      });
+    }
+  };
+
+  const handleImportComplete = (importedUsers: User[]) => {
+    const updatedUsers = [...users, ...importedUsers];
+    setUsers(updatedUsers);
+    
+    // Update yearly data
+    const yearlyData = JSON.parse(localStorage.getItem('yearlyData') || '[]');
+    const updatedYearlyData = yearlyData.map((data: any) => 
+      data.year === currentYear ? { ...data, users: updatedUsers } : data
+    );
+    localStorage.setItem('yearlyData', JSON.stringify(updatedYearlyData));
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
+    
+    toast({
+      title: "Import Completed",
+      description: `Successfully imported ${importedUsers.length} users with auto-approved accounts.`,
+    });
+  };
+
+  const handleNewYear = (year: number) => {
+    switchYear(year);
+    loadUsers();
+  };
+
+  const handleUpdateUsers = (updatedUsers: User[]) => {
+    // Update yearly data for all users
+    const yearlyData = JSON.parse(localStorage.getItem('yearlyData') || '[]');
+    const updatedYearlyData = yearlyData.map((data: any) => {
+      const yearUsers = updatedUsers.filter(user => user.registrationYear === data.year);
+      return { ...data, users: yearUsers };
+    });
+    localStorage.setItem('yearlyData', JSON.stringify(updatedYearlyData));
+  };
+
+  const visibleUsers = getVisibleUsers();
+  const stats = {
+    total: visibleUsers.length,
+    pending: visibleUsers.filter(u => u.status === 'pending').length,
+    approved: visibleUsers.filter(u => u.status === 'approved').length,
+    rejected: visibleUsers.filter(u => u.status === 'rejected').length,
+    paid: visibleUsers.filter(u => u.paymentStatus).length,
+    admins: visibleUsers.filter(u => u.role === 'admin' || u.role === 'master_admin' || u.role === 'mandalam_admin' || u.role === 'custom_admin').length,
+    pendingPayments: visibleUsers.filter(u => u.paymentSubmission?.submitted && u.paymentSubmission.approvalStatus === 'pending').length,
+    totalPaymentAmount: visibleUsers.filter(u => u.paymentStatus).reduce((sum, u) => sum + (u.paymentAmount || 0), 0),
+    reregistrations: visibleUsers.filter(u => u.isReregistration).length,
+    newRegistrations: visibleUsers.filter(u => !u.isReregistration).length,
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-6 max-w-7xl">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-              <p className="text-gray-600 mt-1">Manage users, payments, and system settings</p>
-              <p className="text-sm text-blue-600">Welcome, {currentUser.fullName}</p>
+              <h1 className="text-2xl font-bold text-gray-800">Admin Dashboard</h1>
+              <div className="flex items-center gap-4 mt-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Year:</span>
+                  <Select value={currentYear.toString()} onValueChange={(year) => switchYear(parseInt(year))}>
+                    <SelectTrigger className="w-24">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableYears.map(year => (
+                        <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {currentUser?.role === 'mandalam_admin' && (
+                  <p className="text-sm text-gray-600">Mandalam: {currentUser.mandalamAccess}</p>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                {currentYear} Active
-              </Badge>
-              <Badge variant="secondary">
-                {users.filter(u => u.registrationYear === currentYear).length} Users
-              </Badge>
+            <div className="flex space-x-3">
+              {hasPermission('canViewUsers') && (
+                <Button onClick={exportToExcel} variant="outline">
+                  Export to Excel
+                </Button>
+              )}
+              {isMasterAdmin && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive">
+                      Clear Data
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Clear All Data</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete ALL data including users, yearly data, and settings. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={() => {
+                          localStorage.clear();
+                          window.location.reload();
+                        }}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        Clear All Data
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+              <Button onClick={logout} variant="outline">
+                Logout
+              </Button>
             </div>
           </div>
         </div>
+      </header>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-3 sm:gap-4 mb-8">
-          <Card className="bg-blue-50 border-blue-200">
-            <CardContent className="p-3 sm:p-4">
-              <div className="text-center">
-                <div className="text-lg sm:text-2xl font-bold text-blue-700">{stats.total}</div>
-                <div className="text-xs sm:text-sm text-blue-600 font-medium">Total Users</div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-green-50 border-green-200">
-            <CardContent className="p-3 sm:p-4">
-              <div className="text-center">
-                <div className="text-lg sm:text-2xl font-bold text-green-700">{stats.newUsers}</div>
-                <div className="text-xs sm:text-sm text-green-600 font-medium">New Users</div>
-              </div>
-            </CardContent>
-          </Card>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="space-y-8">
+          {/* Statistics Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
+                <div className="text-sm text-gray-600">Total Users</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold text-green-600">{stats.newRegistrations}</div>
+                <div className="text-sm text-gray-600">New</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold text-orange-600">{stats.reregistrations}</div>
+                <div className="text-sm text-gray-600">Re-registrations</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+                <div className="text-sm text-gray-600">Pending</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
+                <div className="text-sm text-gray-600">Approved</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
+                <div className="text-sm text-gray-600">Rejected</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold text-purple-600">{stats.paid}</div>
+                <div className="text-sm text-gray-600">Paid</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold text-indigo-600">{stats.admins}</div>
+                <div className="text-sm text-gray-600">Admins</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold text-emerald-600">AED {stats.totalPaymentAmount}</div>
+                <div className="text-sm text-gray-600">Collected</div>
+              </CardContent>
+            </Card>
+          </div>
 
-          <Card className="bg-purple-50 border-purple-200">
-            <CardContent className="p-3 sm:p-4">
-              <div className="text-center">
-                <div className="text-lg sm:text-2xl font-bold text-purple-700">{stats.reRegistrations}</div>
-                <div className="text-xs sm:text-sm text-purple-600 font-medium">Re-registration</div>
-              </div>
-            </CardContent>
-          </Card>
+          <Tabs defaultValue="approvals" className="space-y-6">
+            <TabsList className="grid grid-cols-11 w-full">
+              {hasPermission('canApproveUsers') && <TabsTrigger value="approvals">User Approvals</TabsTrigger>}
+              {hasPermission('canViewUsers') && <TabsTrigger value="users">Users Data</TabsTrigger>}
+              {hasPermission('canViewUsers') && <TabsTrigger value="overview">Users Overview</TabsTrigger>}
+              {hasPermission('canManagePayments') && <TabsTrigger value="payments">Payment Management</TabsTrigger>}
+              {hasPermission('canManagePayments') && <TabsTrigger value="payment-submissions">Payment Submissions</TabsTrigger>}
+              {hasPermission('canManageBenefits') && <TabsTrigger value="benefits">Benefit Management</TabsTrigger>}
+              {hasPermission('canSendNotifications') && <TabsTrigger value="notifications">Send Notifications</TabsTrigger>}
+              {(isMasterAdmin || currentUser?.role === 'admin') && <TabsTrigger value="import">Import Users</TabsTrigger>}
+              {isMasterAdmin && <TabsTrigger value="admin-assignment">Admin Assignment</TabsTrigger>}
+              {isMasterAdmin && <TabsTrigger value="questions">Registration Questions</TabsTrigger>}
+              {isMasterAdmin && <TabsTrigger value="new-year">New Year Management</TabsTrigger>}
+            </TabsList>
 
-          <Card className="bg-yellow-50 border-yellow-200">
-            <CardContent className="p-3 sm:p-4">
-              <div className="text-center">
-                <div className="text-lg sm:text-2xl font-bold text-yellow-700">{stats.pending}</div>
-                <div className="text-xs sm:text-sm text-yellow-600 font-medium">Pending</div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-green-50 border-green-200">
-            <CardContent className="p-3 sm:p-4">
-              <div className="text-center">
-                <div className="text-lg sm:text-2xl font-bold text-green-700">{stats.approved}</div>
-                <div className="text-xs sm:text-sm text-green-600 font-medium">Approved</div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-red-50 border-red-200">
-            <CardContent className="p-3 sm:p-4">
-              <div className="text-center">
-                <div className="text-lg sm:text-2xl font-bold text-red-700">{stats.rejected}</div>
-                <div className="text-xs sm:text-sm text-red-600 font-medium">Rejected</div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-indigo-50 border-indigo-200">
-            <CardContent className="p-3 sm:p-4">
-              <div className="text-center">
-                <div className="text-lg sm:text-2xl font-bold text-indigo-700">{stats.paid}</div>
-                <div className="text-xs sm:text-sm text-indigo-600 font-medium">Paid</div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-teal-50 border-teal-200">
-            <CardContent className="p-3 sm:p-4">
-              <div className="text-center">
-                <div className="text-lg sm:text-2xl font-bold text-teal-700">{stats.admins}</div>
-                <div className="text-xs sm:text-sm text-teal-600 font-medium">Admins</div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-orange-50 border-orange-200">
-            <CardContent className="p-3 sm:p-4">
-              <div className="text-center">
-                <div className="text-lg sm:text-2xl font-bold text-orange-700">{stats.collected}</div>
-                <div className="text-xs sm:text-sm text-orange-600 font-medium">Collected AED</div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Main Content */}
-        <Card className="shadow-lg">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <div className="border-b bg-white rounded-t-lg">
-              <TabsList className="w-full h-auto p-1 bg-transparent grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-11 gap-1">
-                {tabsConfig.map((tab) => {
-                  const IconComponent = tab.icon;
-                  return (
-                    <TabsTrigger
-                      key={tab.id}
-                      value={tab.id}
-                      className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 p-2 sm:p-3 text-xs sm:text-sm font-medium data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-200 relative"
-                    >
-                      <IconComponent className="h-4 w-4 flex-shrink-0" />
-                      <span className="hidden sm:inline truncate">{tab.label}</span>
-                      <span className="sm:hidden text-xs">{tab.label}</span>
-                      {tab.badge !== undefined && tab.badge > 0 && (
-                        <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs bg-red-500 text-white">
-                          {tab.badge}
-                        </Badge>
+            {/* User Approvals Tab */}
+            {hasPermission('canApproveUsers') && (
+              <TabsContent value="approvals" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Pending Approvals</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {visibleUsers.filter(user => user.status === 'pending').map(user => (
+                        <div key={user.id} className="border rounded-lg p-4">
+                          <div className="flex justify-between items-start">
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-semibold">{user.fullName}</h3>
+                                {user.isReregistration && (
+                                  <Badge className="bg-orange-500">Re-registration</Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-600">{user.email}</p>
+                              <p className="text-sm text-gray-600">Phone: {user.mobileNo}</p>
+                              <p className="text-sm text-gray-600">Emirates ID: {user.emiratesId}</p>
+                              <p className="text-sm text-gray-600">Emirate: {user.emirate}</p>
+                              <p className="text-sm text-gray-600">Mandalam: {user.mandalam}</p>
+                              <p className="text-sm text-gray-600">
+                                Registered: {new Date(user.registrationDate).toLocaleDateString()} at {new Date(user.registrationDate).toLocaleTimeString()}
+                              </p>
+                            </div>
+                            <div className="flex space-x-2">
+                              <Button
+                                onClick={() => approveUser(user.id)}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                onClick={() => rejectUser(user.id)}
+                                variant="destructive"
+                              >
+                                Reject
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {visibleUsers.filter(user => user.status === 'pending').length === 0 && (
+                        <p className="text-gray-500 text-center py-8">No pending approvals</p>
                       )}
-                    </TabsTrigger>
-                  );
-                })}
-              </TabsList>
-            </div>
-
-            <div className="p-4 sm:p-6">
-              <TabsContent value="overview" className="mt-0 space-y-6">
-                <UsersOverview users={users} />
+                    </div>
+                  </CardContent>
+                </Card>
               </TabsContent>
+            )}
 
-              <TabsContent value="users" className="mt-0">
+            {/* Users Data Tab */}
+            {hasPermission('canViewUsers') && (
+              <TabsContent value="users" className="space-y-6">
                 <UsersDataTable 
-                  users={users}
-                  onUpdateUser={handleUpdateUser}
-                  onDeleteUser={(userId: string) => {
-                    const updatedUsers = users.filter(user => user.id !== userId);
-                    handleUpdateUsers(updatedUsers);
-                    toast({
-                      title: "User Deleted",
-                      description: "User has been deleted successfully.",
-                      variant: "destructive"
-                    });
-                  }}
-                  isMasterAdmin={currentUser?.role === 'master_admin'}
+                  users={visibleUsers}
+                  onUpdateUser={updateUser}
+                  onDeleteUser={deleteUser}
+                  isMasterAdmin={isMasterAdmin}
                   userRole={currentUser?.role || 'user'}
-                  userMandalam={currentUser?.mandalam}
+                  userMandalam={currentUser?.mandalamAccess}
                 />
               </TabsContent>
+            )}
 
-              <TabsContent value="payments" className="mt-0">
-                <EnhancedPaymentManager 
-                  users={users}
-                  onUpdateUser={handleUpdateUser}
+            {/* Users Overview Tab */}
+            {hasPermission('canViewUsers') && (
+              <TabsContent value="overview" className="space-y-6">
+                <UsersOverview users={visibleUsers} />
+              </TabsContent>
+            )}
+
+            {/* Payment Management Tab */}
+            {hasPermission('canManagePayments') && (
+              <TabsContent value="payments" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Payment Management</CardTitle>
+                    <div className="mt-4">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                        <Input
+                          placeholder="Search by name, reg no, phone, or Emirates ID..."
+                          className="pl-10"
+                          onChange={(e) => {
+                            const searchTerm = e.target.value.toLowerCase();
+                            // You can implement search filtering here
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {visibleUsers.filter(user => user.status === 'approved').map(user => (
+                        <div key={user.id} className="border rounded-lg p-4">
+                          <div className="flex justify-between items-start">
+                            <div className="space-y-2">
+                              <div className="flex items-center space-x-2">
+                                <h3 className="font-semibold">{user.fullName}</h3>
+                                <Badge className={user.paymentStatus ? 'bg-green-500' : 'bg-gray-500'}>
+                                  {user.paymentStatus ? 'Paid' : 'Unpaid'}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-gray-600">{user.email}</p>
+                              {user.paymentAmount && (
+                                <p className="text-sm font-semibold text-green-600">Amount: AED {user.paymentAmount}</p>
+                              )}
+                              {user.paymentRemarks && (
+                                <p className="text-sm text-blue-600">Remarks: {user.paymentRemarks}</p>
+                              )}
+                            </div>
+                            <div className="flex items-center space-x-4">
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button variant="outline">Update Payment</Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>Update Payment Status</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="space-y-4">
+                                    <Input
+                                      type="number"
+                                      placeholder="Payment Amount (AED)"
+                                      value={paymentAmount}
+                                      onChange={(e) => setPaymentAmount(Number(e.target.value))}
+                                    />
+                                    <Textarea
+                                      placeholder="Payment remarks (optional)"
+                                      value={paymentRemarks}
+                                      onChange={(e) => setPaymentRemarks(e.target.value)}
+                                    />
+                                    <div className="flex items-center space-x-2">
+                                      <Checkbox
+                                        checked={user.paymentStatus}
+                                        onCheckedChange={() => {
+                                          togglePayment(user.id, paymentAmount, paymentRemarks);
+                                          setPaymentAmount(0);
+                                          setPaymentRemarks('');
+                                        }}
+                                      />
+                                      <label className="text-sm">Mark as Paid</label>
+                                    </div>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Total Amount Display */}
+                    <div className="mt-6 text-center">
+                      <div className="text-3xl font-bold text-green-600">
+                        Total Collected: AED {stats.totalPaymentAmount}
+                      </div>
+                      <p className="text-gray-600">From {stats.paid} paid members</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
+
+            {/* Payment Submissions Tab */}
+            {hasPermission('canManagePayments') && (
+              <TabsContent value="payment-submissions" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Payment Submissions</CardTitle>
+                    <div className="mt-4">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                        <Input
+                          placeholder="Search by name, reg no, phone, or Emirates ID..."
+                          className="pl-10"
+                          onChange={(e) => {
+                            const searchTerm = e.target.value.toLowerCase();
+                            // You can implement search filtering here
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {visibleUsers.filter(user => user.paymentSubmission?.submitted).map(user => (
+                        <div key={user.id} className="border rounded-lg p-4">
+                          <div className="flex justify-between items-start">
+                            <div className="space-y-2">
+                              <div className="flex items-center space-x-2">
+                                <h3 className="font-semibold">{user.fullName}</h3>
+                                <Badge className={
+                                  user.paymentSubmission?.approvalStatus === 'approved' ? 'bg-green-500' :
+                                  user.paymentSubmission?.approvalStatus === 'declined' ? 'bg-red-500' : 'bg-yellow-500'
+                                }>
+                                  {user.paymentSubmission?.approvalStatus}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-gray-600">{user.email}</p>
+                              <p className="text-sm text-gray-600">
+                                Submitted: {new Date(user.paymentSubmission?.submissionDate!).toLocaleDateString()}
+                              </p>
+                              {user.paymentSubmission?.amount && (
+                                <p className="text-sm font-semibold text-green-600">
+                                  Amount: AED {user.paymentSubmission.amount}
+                                </p>
+                              )}
+                              {user.paymentSubmission?.userRemarks && (
+                                <div className="bg-gray-50 p-2 rounded">
+                                  <p className="text-sm font-medium text-gray-700">User Remarks:</p>
+                                  <p className="text-sm text-gray-600">{user.paymentSubmission.userRemarks}</p>
+                                </div>
+                              )}
+                              {user.paymentSubmission?.adminRemarks && (
+                                <p className="text-sm text-blue-600">
+                                  Admin Remarks: {user.paymentSubmission.adminRemarks}
+                                </p>
+                              )}
+                            </div>
+                            
+                            <div className="flex space-x-2">
+                              {user.paymentSubmission?.approvalStatus === 'pending' ? (
+                                <>
+                                  <Dialog>
+                                    <DialogTrigger asChild>
+                                      <Button className="bg-green-600 hover:bg-green-700">
+                                        Approve
+                                      </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                      <DialogHeader>
+                                        <DialogTitle>Approve Payment</DialogTitle>
+                                      </DialogHeader>
+                                      <div className="space-y-4">
+                                        <Textarea
+                                          placeholder="Admin remarks (optional)"
+                                          value={paymentRemarks}
+                                          onChange={(e) => setPaymentRemarks(e.target.value)}
+                                        />
+                                        <Button 
+                                          onClick={() => {
+                                            approvePaymentSubmission(user.id, paymentRemarks);
+                                            setPaymentRemarks('');
+                                          }}
+                                          className="w-full"
+                                        >
+                                          Approve Payment
+                                        </Button>
+                                      </div>
+                                    </DialogContent>
+                                  </Dialog>
+                                  
+                                  <Dialog>
+                                    <DialogTrigger asChild>
+                                      <Button variant="destructive">
+                                        Decline
+                                      </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                      <DialogHeader>
+                                        <DialogTitle>Decline Payment</DialogTitle>
+                                      </DialogHeader>
+                                      <div className="space-y-4">
+                                        <Textarea
+                                          placeholder="Reason for declining (required)"
+                                          value={paymentRemarks}
+                                          onChange={(e) => setPaymentRemarks(e.target.value)}
+                                          required
+                                        />
+                                        <Button 
+                                          onClick={() => {
+                                            if (paymentRemarks.trim()) {
+                                              declinePaymentSubmission(user.id, paymentRemarks);
+                                              setPaymentRemarks('');
+                                            } else {
+                                              toast({
+                                                title: "Error",
+                                                description: "Please provide a reason for declining.",
+                                                variant: "destructive"
+                                              });
+                                            }
+                                          }}
+                                          variant="destructive"
+                                          className="w-full"
+                                        >
+                                          Decline Payment
+                                        </Button>
+                                      </div>
+                                    </DialogContent>
+                                  </Dialog>
+                                </>
+                              ) : (
+                                <Button 
+                                  onClick={() => resetPaymentSubmission(user.id)}
+                                  variant="outline"
+                                >
+                                  Reset Submission
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {visibleUsers.filter(user => user.paymentSubmission?.submitted).length === 0 && (
+                        <p className="text-gray-500 text-center py-8">No payment submissions</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
+
+            {/* Benefit Management Tab */}
+            {hasPermission('canManageBenefits') && (
+              <TabsContent value="benefits" className="space-y-6">
+                <EnhancedBenefitManager users={visibleUsers} onUpdateUser={updateUser} />
+              </TabsContent>
+            )}
+
+            {/* Notifications Tab */}
+            {hasPermission('canSendNotifications') && (
+              <TabsContent value="notifications" className="space-y-6">
+                <NotificationManager 
+                  users={visibleUsers}
+                  onUpdateUser={updateUser}
+                  currentAdminName={currentUser?.fullName || 'Admin'}
                 />
               </TabsContent>
+            )}
 
-              <TabsContent value="benefits" className="mt-0">
-                <EnhancedBenefitManager 
-                  users={users}
-                  onUpdateUser={handleUpdateUser}
-                />
+            {/* Import Users Tab */}
+            {(isMasterAdmin || currentUser?.role === 'admin') && (
+              <TabsContent value="import" className="space-y-6">
+                <CSVImport onImportComplete={handleImportComplete} />
               </TabsContent>
+            )}
 
-              <TabsContent value="messaging" className="mt-0">
-                <EnhancedMessageManager 
-                  users={users}
-                  currentUser={currentUser}
-                />
-              </TabsContent>
-
-              <TabsContent value="admins" className="mt-0">
+            {/* Admin Assignment Tab */}
+            {isMasterAdmin && (
+              <TabsContent value="admin-assignment" className="space-y-6">
                 <CustomAdminManager 
                   users={users}
-                  onUpdateUser={handleUpdateUser}
+                  onUpdateUser={updateUser}
                 />
               </TabsContent>
+            )}
 
-              <TabsContent value="newyear" className="mt-0">
+            {/* Registration Questions Tab */}
+            {isMasterAdmin && (
+              <TabsContent value="questions" className="space-y-6">
+                <RegistrationQuestionsManager />
+              </TabsContent>
+            )}
+
+            {/* New Year Management Tab */}
+            {isMasterAdmin && (
+              <TabsContent value="new-year" className="space-y-6">
                 <NewYearManager 
                   users={users}
                   onNewYear={handleNewYear}
@@ -418,56 +915,28 @@ const AdminDashboard: React.FC = () => {
                   availableYears={availableYears}
                 />
               </TabsContent>
-
-              <TabsContent value="questions" className="mt-0">
-                <RegistrationQuestionsManager />
-              </TabsContent>
-
-              <TabsContent value="reports" className="mt-0">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <FileText className="h-5 w-5" />
-                      Reports & Analytics
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600">Reports section - Coming soon</p>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="import" className="mt-0">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <RefreshCw className="h-5 w-5" />
-                      Import Data
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600">Data import section - Coming soon</p>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="settings" className="mt-0">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Settings className="h-5 w-5" />
-                      System Settings
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600">Settings section - Coming soon</p>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </div>
+            )}
           </Tabs>
-        </Card>
-      </div>
+
+          {/* Confirmation Dialog */}
+          <AlertDialog open={!!confirmAction} onOpenChange={() => setConfirmAction(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{confirmAction?.title}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {confirmAction?.description}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={executeConfirmedAction}>
+                  Confirm
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </main>
     </div>
   );
 };
