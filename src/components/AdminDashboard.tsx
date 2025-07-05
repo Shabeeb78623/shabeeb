@@ -28,30 +28,43 @@ import {
   Shield
 } from 'lucide-react';
 
-interface AdminDashboardProps {
-  users: User[];
-  onUpdateUser: (user: User) => void;
-  onUpdateUsers: (users: User[]) => void;
-  currentUser: User;
-  currentYear: number;
-  availableYears: number[];
-  onNewYear: (year: number) => void;
-}
-
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
-  users, 
-  onUpdateUser, 
-  onUpdateUsers,
-  currentUser,
-  currentYear,
-  availableYears,
-  onNewYear
-}) => {
+const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [pendingPayments, setPendingPayments] = useState<any[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentYear] = useState(new Date().getFullYear());
+  const [availableYears] = useState([2024, 2025]);
   const { toast } = useToast();
 
   useEffect(() => {
+    // Load users from localStorage
+    const loadUsers = () => {
+      const storedUsers = localStorage.getItem('users');
+      if (storedUsers) {
+        try {
+          const parsedUsers = JSON.parse(storedUsers);
+          setUsers(Array.isArray(parsedUsers) ? parsedUsers : []);
+        } catch (error) {
+          console.error('Error parsing users:', error);
+          setUsers([]);
+        }
+      }
+    };
+
+    // Load current user from localStorage
+    const loadCurrentUser = () => {
+      const storedUser = localStorage.getItem('currentUser');
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          setCurrentUser(parsedUser);
+        } catch (error) {
+          console.error('Error parsing current user:', error);
+        }
+      }
+    };
+
     // Load pending payments from localStorage
     const loadPendingPayments = () => {
       const payments = localStorage.getItem('pendingPayments');
@@ -66,6 +79,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       }
     };
 
+    loadUsers();
+    loadCurrentUser();
     loadPendingPayments();
     
     // Set up interval to check for new payments
@@ -73,11 +88,29 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     return () => clearInterval(interval);
   }, []);
 
+  const handleUpdateUser = (updatedUser: User) => {
+    const updatedUsers = users.map(user => 
+      user.id === updatedUser.id ? updatedUser : user
+    );
+    setUsers(updatedUsers);
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
+  };
+
+  const handleUpdateUsers = (updatedUsers: User[]) => {
+    setUsers(updatedUsers);
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
+  };
+
+  const handleNewYear = (year: number) => {
+    // Handle new year logic
+    console.log('New year:', year);
+  };
+
   const handleApprove = (userId: string) => {
     const userToUpdate = users.find(user => user.id === userId);
     if (userToUpdate) {
       const updatedUser = { ...userToUpdate, status: 'approved' as const };
-      onUpdateUser(updatedUser);
+      handleUpdateUser(updatedUser);
       
       toast({
         title: "User Approved",
@@ -90,7 +123,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const userToUpdate = users.find(user => user.id === userId);
     if (userToUpdate) {
       const updatedUser = { ...userToUpdate, status: 'rejected' as const };
-      onUpdateUser(updatedUser);
+      handleUpdateUser(updatedUser);
       
       toast({
         title: "User Rejected",
@@ -109,7 +142,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       const userToUpdate = users.find(user => user.id === payment.userId);
       if (userToUpdate) {
         const updatedUser = { ...userToUpdate, paymentStatus: true };
-        onUpdateUser(updatedUser);
+        handleUpdateUser(updatedUser);
       }
 
       toast({
@@ -130,17 +163,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     localStorage.setItem('pendingPayments', JSON.stringify(updatedPayments));
   };
 
+  if (!currentUser) {
+    return <div>Loading...</div>;
+  }
+
   const stats = {
     total: users.length,
     newUsers: users.filter(user => user.registrationYear === currentYear).length,
-    reRegistrations: users.filter(user => user.registrationYear === currentYear && user.isRenewal).length,
+    reRegistrations: users.filter(user => user.registrationYear === currentYear && user.isReregistration).length,
     pending: users.filter(user => user.status === 'pending').length,
     approved: users.filter(user => user.status === 'approved').length,
     rejected: users.filter(user => user.status === 'rejected').length,
     paid: users.filter(user => user.paymentStatus === true).length,
-    admins: users.filter(user => user.role === 'admin' || user.role === 'super_admin' || user.role === 'mandalam_admin').length,
+    admins: users.filter(user => user.role === 'admin' || user.role === 'master_admin' || user.role === 'mandalam_admin').length,
     collected: users.filter(user => user.paymentStatus === true).reduce((total, user) => {
-      return total + (user.isRenewal ? 50 : 60);
+      return total + (user.isReregistration ? 50 : 60);
     }, 0)
   };
 
@@ -292,30 +329,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
             <div className="p-4 sm:p-6">
               <TabsContent value="overview" className="mt-0 space-y-6">
-                <UsersOverview users={users} currentYear={currentYear} />
+                <UsersOverview users={users} />
               </TabsContent>
 
               <TabsContent value="users" className="mt-0">
                 <UsersDataTable 
-                  users={users} 
-                  onApprove={handleApprove}
-                  onReject={handleReject}
+                  users={users}
                 />
               </TabsContent>
 
               <TabsContent value="payments" className="mt-0">
                 <EnhancedPaymentManager 
                   users={users}
-                  onUpdateUser={onUpdateUser}
-                  pendingPayments={pendingPayments}
-                  onPaymentAction={handlePaymentAction}
+                  onUpdateUser={handleUpdateUser}
                 />
               </TabsContent>
 
               <TabsContent value="benefits" className="mt-0">
                 <EnhancedBenefitManager 
                   users={users}
-                  onUpdateUser={onUpdateUser}
+                  onUpdateUser={handleUpdateUser}
                 />
               </TabsContent>
 
@@ -329,15 +362,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <TabsContent value="admins" className="mt-0">
                 <CustomAdminManager 
                   users={users}
-                  onUpdateUser={onUpdateUser}
+                  onUpdateUser={handleUpdateUser}
                 />
               </TabsContent>
 
               <TabsContent value="newyear" className="mt-0">
                 <NewYearManager 
                   users={users}
-                  onNewYear={onNewYear}
-                  onUpdateUsers={onUpdateUsers}
+                  onNewYear={handleNewYear}
+                  onUpdateUsers={handleUpdateUsers}
                   currentYear={currentYear}
                   availableYears={availableYears}
                 />
