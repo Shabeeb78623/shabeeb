@@ -1,0 +1,477 @@
+
+import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { Plus, Edit, Trash2, ArrowUp, ArrowDown, Settings } from 'lucide-react';
+import QuestionEditor from './QuestionEditor';
+
+type FieldType = 'text' | 'select' | 'checkbox' | 'textarea' | 'email' | 'phone' | 'dependent_select';
+
+interface RegistrationQuestion {
+  id: string;
+  question_key: string;
+  question_text: string;
+  field_type: FieldType;
+  options?: string[];
+  required: boolean;
+  order_index: number;
+  conditional_parent?: string;
+  conditional_value?: string;
+  placeholder?: string;
+  help_text?: string;
+  dependent_options?: { [key: string]: string[] };
+}
+
+const ImprovedRegistrationQuestionsManager: React.FC = () => {
+  const [questions, setQuestions] = useState<RegistrationQuestion[]>([]);
+  const [editingQuestion, setEditingQuestion] = useState<RegistrationQuestion | null>(null);
+  const [questionForm, setQuestionForm] = useState({
+    question_key: '',
+    question_text: '',
+    field_type: 'text' as FieldType,
+    options: [] as string[],
+    required: true,
+    placeholder: '',
+    help_text: '',
+    dependent_options: {} as { [key: string]: string[] }
+  });
+  const [loading, setLoading] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    loadQuestions();
+  }, []);
+
+  const loadQuestions = () => {
+    try {
+      const storedQuestions = localStorage.getItem('registrationQuestions');
+      if (storedQuestions) {
+        const questionData = JSON.parse(storedQuestions);
+        setQuestions(questionData.sort((a: RegistrationQuestion, b: RegistrationQuestion) => a.order_index - b.order_index));
+      } else {
+        // Initialize with default questions
+        const defaultQuestions: RegistrationQuestion[] = [
+          {
+            id: '1',
+            question_key: 'full_name',
+            question_text: 'Full Name',
+            field_type: 'text',
+            required: true,
+            order_index: 1,
+            placeholder: 'Enter your full name'
+          },
+          {
+            id: '2', 
+            question_key: 'email',
+            question_text: 'Email Address',
+            field_type: 'email',
+            required: true,
+            order_index: 2,
+            placeholder: 'Enter your email address'
+          },
+          {
+            id: '3',
+            question_key: 'emirate',
+            question_text: 'Emirate',
+            field_type: 'select',
+            options: ['Abu Dhabi', 'Dubai', 'Sharjah', 'Ajman', 'Umm Al Quwain', 'Ras Al Khaimah', 'Fujairah'],
+            required: true,
+            order_index: 3
+          }
+        ];
+        localStorage.setItem('registrationQuestions', JSON.stringify(defaultQuestions));
+        setQuestions(defaultQuestions);
+      }
+    } catch (error) {
+      console.error('Error loading questions:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load registration questions",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const saveQuestions = (updatedQuestions: RegistrationQuestion[]) => {
+    try {
+      const reindexedQuestions = updatedQuestions
+        .sort((a, b) => a.order_index - b.order_index)
+        .map((q, index) => ({ ...q, order_index: index + 1 }));
+      
+      localStorage.setItem('registrationQuestions', JSON.stringify(reindexedQuestions));
+      setQuestions(reindexedQuestions);
+      console.log('Questions saved:', reindexedQuestions);
+    } catch (error) {
+      console.error('Error saving questions:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save questions",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const resetForm = () => {
+    setQuestionForm({
+      question_key: '',
+      question_text: '',
+      field_type: 'text',
+      options: [],
+      required: true,
+      placeholder: '',
+      help_text: '',
+      dependent_options: {}
+    });
+  };
+
+  const handleAddQuestion = () => {
+    if (!questionForm.question_key.trim() || !questionForm.question_text.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Question key and text are required.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (questions.some(q => q.question_key === questionForm.question_key)) {
+      toast({
+        title: "Duplicate Key",
+        description: "A question with this key already exists.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const newQuestion: RegistrationQuestion = {
+        id: Date.now().toString(),
+        question_key: questionForm.question_key,
+        question_text: questionForm.question_text,
+        field_type: questionForm.field_type,
+        options: ['select', 'dependent_select'].includes(questionForm.field_type) ? questionForm.options : undefined,
+        required: questionForm.required,
+        order_index: questions.length + 1,
+        placeholder: questionForm.placeholder || undefined,
+        help_text: questionForm.help_text || undefined,
+        dependent_options: questionForm.field_type === 'dependent_select' ? questionForm.dependent_options : undefined,
+      };
+
+      const updatedQuestions = [...questions, newQuestion];
+      saveQuestions(updatedQuestions);
+      
+      resetForm();
+      setIsAddDialogOpen(false);
+
+      toast({
+        title: "Question Added",
+        description: "Registration question has been added successfully.",
+      });
+    } catch (error) {
+      console.error('Error adding question:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add question",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditQuestion = (question: RegistrationQuestion) => {
+    setEditingQuestion(question);
+    setQuestionForm({
+      question_key: question.question_key,
+      question_text: question.question_text,
+      field_type: question.field_type,
+      options: question.options || [],
+      required: question.required,
+      placeholder: question.placeholder || '',
+      help_text: question.help_text || '',
+      dependent_options: question.dependent_options || {}
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateQuestion = () => {
+    if (!editingQuestion) return;
+
+    if (!questionForm.question_key.trim() || !questionForm.question_text.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Question key and text are required.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (questions.some(q => q.question_key === questionForm.question_key && q.id !== editingQuestion.id)) {
+      toast({
+        title: "Duplicate Key", 
+        description: "A question with this key already exists.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const updatedQuestion: RegistrationQuestion = {
+        ...editingQuestion,
+        question_key: questionForm.question_key,
+        question_text: questionForm.question_text,
+        field_type: questionForm.field_type,
+        options: ['select', 'dependent_select'].includes(questionForm.field_type) ? questionForm.options : undefined,
+        required: questionForm.required,
+        placeholder: questionForm.placeholder || undefined,
+        help_text: questionForm.help_text || undefined,
+        dependent_options: questionForm.field_type === 'dependent_select' ? questionForm.dependent_options : undefined,
+      };
+
+      const updatedQuestions = questions.map(q => 
+        q.id === editingQuestion.id ? updatedQuestion : q
+      );
+      
+      saveQuestions(updatedQuestions);
+      setEditingQuestion(null);
+      setIsEditDialogOpen(false);
+      resetForm();
+
+      toast({
+        title: "Question Updated",
+        description: "Registration question has been updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error updating question:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update question",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteQuestion = (id: string) => {
+    setLoading(true);
+    try {
+      const updatedQuestions = questions.filter(q => q.id !== id);
+      saveQuestions(updatedQuestions);
+
+      toast({
+        title: "Question Deleted",
+        description: "Registration question has been deleted successfully.",
+      });
+    } catch (error) {
+      console.error('Error deleting question:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete question",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const moveQuestion = (questionId: string, direction: 'up' | 'down') => {
+    const currentIndex = questions.findIndex(q => q.id === questionId);
+    if (currentIndex === -1) return;
+
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (newIndex < 0 || newIndex >= questions.length) return;
+
+    const updatedQuestions = [...questions];
+    [updatedQuestions[currentIndex], updatedQuestions[newIndex]] = 
+    [updatedQuestions[newIndex], updatedQuestions[currentIndex]];
+
+    saveQuestions(updatedQuestions);
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Registration Questions Manager
+            </div>
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Question
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Add New Registration Question</DialogTitle>
+                </DialogHeader>
+                <QuestionEditor
+                  questionForm={questionForm}
+                  setQuestionForm={setQuestionForm}
+                />
+                <div className="flex items-center space-x-2 mt-4">
+                  <Switch
+                    id="required"
+                    checked={questionForm.required}
+                    onCheckedChange={(checked) => setQuestionForm({ ...questionForm, required: checked })}
+                  />
+                  <Label htmlFor="required">Required Field</Label>
+                </div>
+                <div className="flex justify-end space-x-2 pt-6">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setIsAddDialogOpen(false);
+                      resetForm();
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button onClick={handleAddQuestion} disabled={loading}>
+                    {loading ? 'Adding...' : 'Add Question'}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-16">Order</TableHead>
+                  <TableHead>Key</TableHead>
+                  <TableHead>Question</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Required</TableHead>
+                  <TableHead className="w-32">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {questions.map((question, index) => (
+                  <TableRow key={question.id}>
+                    <TableCell>
+                      <span className="font-medium">{question.order_index}</span>
+                    </TableCell>
+                    <TableCell>
+                      <code className="text-sm bg-gray-100 px-2 py-1 rounded">
+                        {question.question_key}
+                      </code>
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{question.question_text}</p>
+                        {question.placeholder && (
+                          <p className="text-sm text-gray-500">
+                            Placeholder: {question.placeholder}
+                          </p>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="capitalize">
+                        {question.field_type}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={question.required ? "default" : "secondary"}>
+                        {question.required ? "Required" : "Optional"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex space-x-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => moveQuestion(question.id, 'up')}
+                          disabled={index === 0}
+                        >
+                          <ArrowUp className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => moveQuestion(question.id, 'down')}
+                          disabled={index === questions.length - 1}
+                        >
+                          <ArrowDown className="h-3 w-3" />
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleEditQuestion(question)}
+                        >
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          onClick={() => handleDeleteQuestion(question.id)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Registration Question</DialogTitle>
+          </DialogHeader>
+          <QuestionEditor
+            questionForm={questionForm}
+            setQuestionForm={setQuestionForm}
+          />
+          <div className="flex items-center space-x-2 mt-4">
+            <Switch
+              id="required-edit"
+              checked={questionForm.required}
+              onCheckedChange={(checked) => setQuestionForm({ ...questionForm, required: checked })}
+            />
+            <Label htmlFor="required-edit">Required Field</Label>
+          </div>
+          <div className="flex justify-end space-x-2 pt-6">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsEditDialogOpen(false);
+                setEditingQuestion(null);
+                resetForm();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateQuestion} disabled={loading}>
+              {loading ? 'Updating...' : 'Update Question'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default ImprovedRegistrationQuestionsManager;

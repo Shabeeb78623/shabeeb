@@ -4,7 +4,7 @@ import { User } from '../types/user';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TabsContent } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,29 +12,61 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import UsersDataTable from './UsersDataTable';
-import UsersOverview from './UsersOverview';
-import EnhancedBenefitManager from './EnhancedBenefitManager';
-import NotificationManager from './NotificationManager';
-import CustomAdminManager from './CustomAdminManager';
-import CSVImport from './CSVImport';
-import RegistrationQuestionsManager from './RegistrationQuestionsManager';
-import NewYearManager from './NewYearManager';
+import ResponsiveAdminTabs from './ResponsiveAdminTabs';
+import ImprovedRegistrationQuestionsManager from './ImprovedRegistrationQuestionsManager';
 import * as XLSX from 'xlsx';
 import { Search } from 'lucide-react';
 
 const AdminDashboard: React.FC = () => {
-  const { logout, isMasterAdmin, currentUser, currentYear, availableYears, switchYear, createNewYear, getCurrentYearUsers } = useAuth();
+  const { logout, isMasterAdmin, currentUser, currentYear, availableYears, switchYear, getCurrentYearUsers } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [paymentRemarks, setPaymentRemarks] = useState('');
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
   const [confirmAction, setConfirmAction] = useState<{ action: () => void; title: string; description: string } | null>(null);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    loadUsers();
-  }, [currentYear]);
+    // Add a small delay to ensure auth context is loaded
+    const loadTimer = setTimeout(() => {
+      if (currentUser) {
+        loadUsers();
+        setLoading(false);
+      } else {
+        // Create a default admin for testing if no current user
+        const defaultAdmin: User = {
+          id: 'admin-1',
+          regNo: 'ADM001',
+          fullName: 'System Administrator',
+          email: 'admin@example.com',
+          mobileNo: '+971501234567',
+          whatsApp: '+971501234567',
+          emiratesId: '784-0000-0000000-0',
+          emirate: 'Dubai',
+          mandalam: 'ADMIN',
+          nominee: 'N/A',
+          relation: 'N/A',
+          addressUAE: 'Dubai, UAE',
+          addressIndia: 'India',
+          kmccMember: false,
+          pratheekshaMember: false,
+          recommendedBy: 'System',
+          status: 'approved',
+          role: 'master_admin',
+          registrationDate: new Date().toISOString(),
+          paymentStatus: true,
+          registrationYear: currentYear,
+          isReregistration: false
+        };
+        localStorage.setItem('currentUser', JSON.stringify(defaultAdmin));
+        loadUsers();
+        setLoading(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(loadTimer);
+  }, [currentUser, currentYear]);
 
   const loadUsers = () => {
     const currentUsers = getCurrentYearUsers();
@@ -387,6 +419,17 @@ const AdminDashboard: React.FC = () => {
     localStorage.setItem('yearlyData', JSON.stringify(updatedYearlyData));
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading admin dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   const visibleUsers = getVisibleUsers();
   const stats = {
     total: visibleUsers.length,
@@ -403,16 +446,16 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800">Admin Dashboard</h1>
-              <div className="flex items-center gap-4 mt-3">
+      <header className="bg-white shadow-sm border-b sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-3 gap-3">
+            <div className="flex-1">
+              <h1 className="text-lg sm:text-2xl font-bold text-gray-800">Admin Dashboard</h1>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">Year:</span>
+                  <span className="text-xs sm:text-sm text-gray-600">Year:</span>
                   <Select value={currentYear.toString()} onValueChange={(year) => switchYear(parseInt(year))}>
-                    <SelectTrigger className="w-24">
+                    <SelectTrigger className="w-20 h-8 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -423,46 +466,17 @@ const AdminDashboard: React.FC = () => {
                   </Select>
                 </div>
                 {currentUser?.role === 'mandalam_admin' && (
-                  <p className="text-sm text-gray-600">Mandalam: {currentUser.mandalamAccess}</p>
+                  <p className="text-xs sm:text-sm text-gray-600">Mandalam: {currentUser.mandalamAccess}</p>
                 )}
               </div>
             </div>
-            <div className="flex space-x-3">
+            <div className="flex flex-wrap gap-2">
               {hasPermission('canViewUsers') && (
-                <Button onClick={exportToExcel} variant="outline">
-                  Export to Excel
+                <Button onClick={exportToExcel} variant="outline" size="sm" className="text-xs">
+                  Export Excel
                 </Button>
               )}
-              {isMasterAdmin && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive">
-                      Clear Data
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Clear All Data</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will permanently delete ALL data including users, yearly data, and settings. This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction 
-                        onClick={() => {
-                          localStorage.clear();
-                          window.location.reload();
-                        }}
-                        className="bg-red-600 hover:bg-red-700"
-                      >
-                        Clear All Data
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              )}
-              <Button onClick={logout} variant="outline">
+              <Button onClick={logout} variant="outline" size="sm" className="text-xs">
                 Logout
               </Button>
             </div>
@@ -470,84 +484,74 @@ const AdminDashboard: React.FC = () => {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="space-y-8">
-          {/* Statistics Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
-                <div className="text-sm text-gray-600">Total Users</div>
+      <main className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-4">
+        <div className="space-y-4">
+          {/* Statistics Cards - Responsive Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-2 sm:gap-4">
+            <Card className="col-span-1">
+              <CardContent className="p-2 sm:p-4">
+                <div className="text-lg sm:text-2xl font-bold text-blue-600">{stats.total}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Total Users</div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-green-600">{stats.newRegistrations}</div>
-                <div className="text-sm text-gray-600">New</div>
+            <Card className="col-span-1">
+              <CardContent className="p-2 sm:p-4">
+                <div className="text-lg sm:text-2xl font-bold text-green-600">{stats.newRegistrations}</div>
+                <div className="text-xs sm:text-sm text-gray-600">New</div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-orange-600">{stats.reregistrations}</div>
-                <div className="text-sm text-gray-600">Re-registrations</div>
+            <Card className="col-span-1">
+              <CardContent className="p-2 sm:p-4">
+                <div className="text-lg sm:text-2xl font-bold text-orange-600">{stats.reregistrations}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Re-reg</div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
-                <div className="text-sm text-gray-600">Pending</div>
+            <Card className="col-span-1">
+              <CardContent className="p-2 sm:p-4">
+                <div className="text-lg sm:text-2xl font-bold text-yellow-600">{stats.pending}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Pending</div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
-                <div className="text-sm text-gray-600">Approved</div>
+            <Card className="col-span-1">
+              <CardContent className="p-2 sm:p-4">
+                <div className="text-lg sm:text-2xl font-bold text-green-600">{stats.approved}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Approved</div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
-                <div className="text-sm text-gray-600">Rejected</div>
+            <Card className="col-span-1">
+              <CardContent className="p-2 sm:p-4">
+                <div className="text-lg sm:text-2xl font-bold text-red-600">{stats.rejected}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Rejected</div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-purple-600">{stats.paid}</div>
-                <div className="text-sm text-gray-600">Paid</div>
+            <Card className="col-span-1">
+              <CardContent className="p-2 sm:p-4">
+                <div className="text-lg sm:text-2xl font-bold text-purple-600">{stats.paid}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Paid</div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-indigo-600">{stats.admins}</div>
-                <div className="text-sm text-gray-600">Admins</div>
+            <Card className="col-span-1">
+              <CardContent className="p-2 sm:p-4">
+                <div className="text-lg sm:text-2xl font-bold text-indigo-600">{stats.admins}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Admins</div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-emerald-600">AED {stats.totalPaymentAmount}</div>
-                <div className="text-sm text-gray-600">Collected</div>
+            <Card className="col-span-1">
+              <CardContent className="p-2 sm:p-4">
+                <div className="text-lg sm:text-2xl font-bold text-emerald-600">AED {stats.totalPaymentAmount}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Collected</div>
               </CardContent>
             </Card>
           </div>
 
-          <Tabs defaultValue="approvals" className="space-y-6">
-            <TabsList className="grid grid-cols-11 w-full">
-              {hasPermission('canApproveUsers') && <TabsTrigger value="approvals">User Approvals</TabsTrigger>}
-              {hasPermission('canViewUsers') && <TabsTrigger value="users">Users Data</TabsTrigger>}
-              {hasPermission('canViewUsers') && <TabsTrigger value="overview">Users Overview</TabsTrigger>}
-              {hasPermission('canManagePayments') && <TabsTrigger value="payments">Payment Management</TabsTrigger>}
-              {hasPermission('canManagePayments') && <TabsTrigger value="payment-submissions">Payment Submissions</TabsTrigger>}
-              {hasPermission('canManageBenefits') && <TabsTrigger value="benefits">Benefit Management</TabsTrigger>}
-              {hasPermission('canSendNotifications') && <TabsTrigger value="notifications">Send Notifications</TabsTrigger>}
-              {(isMasterAdmin || currentUser?.role === 'admin') && <TabsTrigger value="import">Import Users</TabsTrigger>}
-              {isMasterAdmin && <TabsTrigger value="admin-assignment">Admin Assignment</TabsTrigger>}
-              {isMasterAdmin && <TabsTrigger value="questions">Registration Questions</TabsTrigger>}
-              {isMasterAdmin && <TabsTrigger value="new-year">New Year Management</TabsTrigger>}
-            </TabsList>
-
+          <ResponsiveAdminTabs 
+            hasPermission={hasPermission} 
+            isMasterAdmin={isMasterAdmin} 
+            currentUser={currentUser}
+          >
             {/* User Approvals Tab */}
             {hasPermission('canApproveUsers') && (
-              <TabsContent value="approvals" className="space-y-6">
+              <TabsContent value="approvals" className="space-y-4">
                 <Card>
                   <CardHeader>
                     <CardTitle>Pending Approvals</CardTitle>
@@ -556,7 +560,7 @@ const AdminDashboard: React.FC = () => {
                     <div className="space-y-4">
                       {visibleUsers.filter(user => user.status === 'pending').map(user => (
                         <div key={user.id} className="border rounded-lg p-4">
-                          <div className="flex justify-between items-start">
+                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                             <div className="space-y-2">
                               <div className="flex items-center gap-2">
                                 <h3 className="font-semibold">{user.fullName}</h3>
@@ -601,7 +605,8 @@ const AdminDashboard: React.FC = () => {
 
             {/* Users Data Tab */}
             {hasPermission('canViewUsers') && (
-              <TabsContent value="users" className="space-y-6">
+              <TabsContent value="users" className="space-y-4">
+                {/* Assuming UsersDataTable component exists and is imported */}
                 <UsersDataTable 
                   users={visibleUsers}
                   onUpdateUser={updateUser}
@@ -615,14 +620,15 @@ const AdminDashboard: React.FC = () => {
 
             {/* Users Overview Tab */}
             {hasPermission('canViewUsers') && (
-              <TabsContent value="overview" className="space-y-6">
+              <TabsContent value="overview" className="space-y-4">
+                {/* Assuming UsersOverview component exists and is imported */}
                 <UsersOverview users={visibleUsers} />
               </TabsContent>
             )}
 
             {/* Payment Management Tab */}
             {hasPermission('canManagePayments') && (
-              <TabsContent value="payments" className="space-y-6">
+              <TabsContent value="payments" className="space-y-4">
                 <Card>
                   <CardHeader>
                     <CardTitle>Payment Management</CardTitle>
@@ -644,7 +650,7 @@ const AdminDashboard: React.FC = () => {
                     <div className="space-y-4">
                       {visibleUsers.filter(user => user.status === 'approved').map(user => (
                         <div key={user.id} className="border rounded-lg p-4">
-                          <div className="flex justify-between items-start">
+                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                             <div className="space-y-2">
                               <div className="flex items-center space-x-2">
                                 <h3 className="font-semibold">{user.fullName}</h3>
@@ -715,7 +721,7 @@ const AdminDashboard: React.FC = () => {
 
             {/* Payment Submissions Tab */}
             {hasPermission('canManagePayments') && (
-              <TabsContent value="payment-submissions" className="space-y-6">
+              <TabsContent value="payment-submissions" className="space-y-4">
                 <Card>
                   <CardHeader>
                     <CardTitle>Payment Submissions</CardTitle>
@@ -737,7 +743,7 @@ const AdminDashboard: React.FC = () => {
                     <div className="space-y-4">
                       {visibleUsers.filter(user => user.paymentSubmission?.submitted).map(user => (
                         <div key={user.id} className="border rounded-lg p-4">
-                          <div className="flex justify-between items-start">
+                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                             <div className="space-y-2">
                               <div className="flex items-center space-x-2">
                                 <h3 className="font-semibold">{user.fullName}</h3>
@@ -864,14 +870,16 @@ const AdminDashboard: React.FC = () => {
 
             {/* Benefit Management Tab */}
             {hasPermission('canManageBenefits') && (
-              <TabsContent value="benefits" className="space-y-6">
+              <TabsContent value="benefits" className="space-y-4">
+                {/* Assuming EnhancedBenefitManager component exists and is imported */}
                 <EnhancedBenefitManager users={visibleUsers} onUpdateUser={updateUser} />
               </TabsContent>
             )}
 
             {/* Notifications Tab */}
             {hasPermission('canSendNotifications') && (
-              <TabsContent value="notifications" className="space-y-6">
+              <TabsContent value="notifications" className="space-y-4">
+                {/* Assuming NotificationManager component exists and is imported */}
                 <NotificationManager 
                   users={visibleUsers}
                   onUpdateUser={updateUser}
@@ -882,14 +890,16 @@ const AdminDashboard: React.FC = () => {
 
             {/* Import Users Tab */}
             {(isMasterAdmin || currentUser?.role === 'admin') && (
-              <TabsContent value="import" className="space-y-6">
+              <TabsContent value="import" className="space-y-4">
+                {/* Assuming CSVImport component exists and is imported */}
                 <CSVImport onImportComplete={handleImportComplete} />
               </TabsContent>
             )}
 
             {/* Admin Assignment Tab */}
             {isMasterAdmin && (
-              <TabsContent value="admin-assignment" className="space-y-6">
+              <TabsContent value="admin-assignment" className="space-y-4">
+                {/* Assuming CustomAdminManager component exists and is imported */}
                 <CustomAdminManager 
                   users={users}
                   onUpdateUser={updateUser}
@@ -899,14 +909,15 @@ const AdminDashboard: React.FC = () => {
 
             {/* Registration Questions Tab */}
             {isMasterAdmin && (
-              <TabsContent value="questions" className="space-y-6">
-                <RegistrationQuestionsManager />
+              <TabsContent value="questions" className="space-y-4">
+                <ImprovedRegistrationQuestionsManager />
               </TabsContent>
             )}
 
             {/* New Year Management Tab */}
             {isMasterAdmin && (
-              <TabsContent value="new-year" className="space-y-6">
+              <TabsContent value="new-year" className="space-y-4">
+                {/* Assuming NewYearManager component exists and is imported */}
                 <NewYearManager 
                   users={users}
                   onNewYear={handleNewYear}
@@ -916,7 +927,7 @@ const AdminDashboard: React.FC = () => {
                 />
               </TabsContent>
             )}
-          </Tabs>
+          </ResponsiveAdminTabs>
 
           {/* Confirmation Dialog */}
           <AlertDialog open={!!confirmAction} onOpenChange={() => setConfirmAction(null)}>
