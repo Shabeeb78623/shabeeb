@@ -14,6 +14,15 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ResponsiveAdminTabs from './ResponsiveAdminTabs';
 import ImprovedRegistrationQuestionsManager from './ImprovedRegistrationQuestionsManager';
+import UsersDataTable from './UsersDataTable';
+import UsersOverview from './UsersOverview';
+import EnhancedBenefitManager from './EnhancedBenefitManager';
+import NotificationManager from './NotificationManager';
+import CSVImport from './CSVImport';
+import CustomAdminManager from './CustomAdminManager';
+import NewYearManager from './NewYearManager';
+import ExcelImport from './ExcelImport';
+import EnhancedMessageManager from './EnhancedMessageManager';
 import * as XLSX from 'xlsx';
 import { Search } from 'lucide-react';
 
@@ -44,9 +53,9 @@ const AdminDashboard: React.FC = () => {
           whatsApp: '+971501234567',
           emiratesId: '784-0000-0000000-0',
           emirate: 'Dubai',
-          mandalam: 'ADMIN',
-          nominee: 'N/A',
-          relation: 'N/A',
+          mandalam: 'BALUSHERI', // Fixed: Use valid mandalam value
+          nominee: 'System Admin',
+          relation: 'Father', // Fixed: Use valid relation value
           addressUAE: 'Dubai, UAE',
           addressIndia: 'India',
           kmccMember: false,
@@ -55,8 +64,10 @@ const AdminDashboard: React.FC = () => {
           status: 'approved',
           role: 'master_admin',
           registrationDate: new Date().toISOString(),
-          paymentStatus: true,
           registrationYear: currentYear,
+          paymentStatus: true,
+          benefitsUsed: [],
+          notifications: [],
           isReregistration: false
         };
         localStorage.setItem('currentUser', JSON.stringify(defaultAdmin));
@@ -485,60 +496,60 @@ const AdminDashboard: React.FC = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-4">
-        <div className="space-y-4">
-          {/* Statistics Cards - Responsive Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-2 sm:gap-4">
-            <Card className="col-span-1">
-              <CardContent className="p-2 sm:p-4">
-                <div className="text-lg sm:text-2xl font-bold text-blue-600">{stats.total}</div>
-                <div className="text-xs sm:text-sm text-gray-600">Total Users</div>
+        <div className="space-y-6">
+          {/* Statistics Cards - Better Mobile Layout */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+            <Card>
+              <CardContent className="p-3 sm:p-4">
+                <div className="text-xl sm:text-2xl font-bold text-blue-600">{stats.total}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Total</div>
               </CardContent>
             </Card>
-            <Card className="col-span-1">
-              <CardContent className="p-2 sm:p-4">
-                <div className="text-lg sm:text-2xl font-bold text-green-600">{stats.newRegistrations}</div>
+            <Card>
+              <CardContent className="p-3 sm:p-4">
+                <div className="text-xl sm:text-2xl font-bold text-green-600">{stats.newRegistrations}</div>
                 <div className="text-xs sm:text-sm text-gray-600">New</div>
               </CardContent>
             </Card>
-            <Card className="col-span-1">
-              <CardContent className="p-2 sm:p-4">
-                <div className="text-lg sm:text-2xl font-bold text-orange-600">{stats.reregistrations}</div>
+            <Card>
+              <CardContent className="p-3 sm:p-4">
+                <div className="text-xl sm:text-2xl font-bold text-orange-600">{stats.reregistrations}</div>
                 <div className="text-xs sm:text-sm text-gray-600">Re-reg</div>
               </CardContent>
             </Card>
-            <Card className="col-span-1">
-              <CardContent className="p-2 sm:p-4">
-                <div className="text-lg sm:text-2xl font-bold text-yellow-600">{stats.pending}</div>
+            <Card>
+              <CardContent className="p-3 sm:p-4">
+                <div className="text-xl sm:text-2xl font-bold text-yellow-600">{stats.pending}</div>
                 <div className="text-xs sm:text-sm text-gray-600">Pending</div>
               </CardContent>
             </Card>
-            <Card className="col-span-1">
-              <CardContent className="p-2 sm:p-4">
-                <div className="text-lg sm:text-2xl font-bold text-green-600">{stats.approved}</div>
+            <Card>
+              <CardContent className="p-3 sm:p-4">
+                <div className="text-xl sm:text-2xl font-bold text-green-600">{stats.approved}</div>
                 <div className="text-xs sm:text-sm text-gray-600">Approved</div>
               </CardContent>
             </Card>
-            <Card className="col-span-1">
-              <CardContent className="p-2 sm:p-4">
-                <div className="text-lg sm:text-2xl font-bold text-red-600">{stats.rejected}</div>
+            <Card>
+              <CardContent className="p-3 sm:p-4">
+                <div className="text-xl sm:text-2xl font-bold text-red-600">{stats.rejected}</div>
                 <div className="text-xs sm:text-sm text-gray-600">Rejected</div>
               </CardContent>
             </Card>
-            <Card className="col-span-1">
-              <CardContent className="p-2 sm:p-4">
-                <div className="text-lg sm:text-2xl font-bold text-purple-600">{stats.paid}</div>
+            <Card>
+              <CardContent className="p-3 sm:p-4">
+                <div className="text-xl sm:text-2xl font-bold text-purple-600">{stats.paid}</div>
                 <div className="text-xs sm:text-sm text-gray-600">Paid</div>
               </CardContent>
             </Card>
-            <Card className="col-span-1">
-              <CardContent className="p-2 sm:p-4">
-                <div className="text-lg sm:text-2xl font-bold text-indigo-600">{stats.admins}</div>
+            <Card>
+              <CardContent className="p-3 sm:p-4">
+                <div className="text-xl sm:text-2xl font-bold text-indigo-600">{stats.admins}</div>
                 <div className="text-xs sm:text-sm text-gray-600">Admins</div>
               </CardContent>
             </Card>
-            <Card className="col-span-1">
-              <CardContent className="p-2 sm:p-4">
-                <div className="text-lg sm:text-2xl font-bold text-emerald-600">AED {stats.totalPaymentAmount}</div>
+            <Card className="sm:col-span-2 lg:col-span-1">
+              <CardContent className="p-3 sm:p-4">
+                <div className="text-lg sm:text-xl font-bold text-emerald-600">AED {stats.totalPaymentAmount}</div>
                 <div className="text-xs sm:text-sm text-gray-600">Collected</div>
               </CardContent>
             </Card>
@@ -606,7 +617,6 @@ const AdminDashboard: React.FC = () => {
             {/* Users Data Tab */}
             {hasPermission('canViewUsers') && (
               <TabsContent value="users" className="space-y-4">
-                {/* Assuming UsersDataTable component exists and is imported */}
                 <UsersDataTable 
                   users={visibleUsers}
                   onUpdateUser={updateUser}
@@ -621,7 +631,6 @@ const AdminDashboard: React.FC = () => {
             {/* Users Overview Tab */}
             {hasPermission('canViewUsers') && (
               <TabsContent value="overview" className="space-y-4">
-                {/* Assuming UsersOverview component exists and is imported */}
                 <UsersOverview users={visibleUsers} />
               </TabsContent>
             )}
@@ -638,10 +647,6 @@ const AdminDashboard: React.FC = () => {
                         <Input
                           placeholder="Search by name, reg no, phone, or Emirates ID..."
                           className="pl-10"
-                          onChange={(e) => {
-                            const searchTerm = e.target.value.toLowerCase();
-                            // You can implement search filtering here
-                          }}
                         />
                       </div>
                     </div>
@@ -725,19 +730,6 @@ const AdminDashboard: React.FC = () => {
                 <Card>
                   <CardHeader>
                     <CardTitle>Payment Submissions</CardTitle>
-                    <div className="mt-4">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                        <Input
-                          placeholder="Search by name, reg no, phone, or Emirates ID..."
-                          className="pl-10"
-                          onChange={(e) => {
-                            const searchTerm = e.target.value.toLowerCase();
-                            // You can implement search filtering here
-                          }}
-                        />
-                      </div>
-                    </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
@@ -871,7 +863,6 @@ const AdminDashboard: React.FC = () => {
             {/* Benefit Management Tab */}
             {hasPermission('canManageBenefits') && (
               <TabsContent value="benefits" className="space-y-4">
-                {/* Assuming EnhancedBenefitManager component exists and is imported */}
                 <EnhancedBenefitManager users={visibleUsers} onUpdateUser={updateUser} />
               </TabsContent>
             )}
@@ -879,27 +870,33 @@ const AdminDashboard: React.FC = () => {
             {/* Notifications Tab */}
             {hasPermission('canSendNotifications') && (
               <TabsContent value="notifications" className="space-y-4">
-                {/* Assuming NotificationManager component exists and is imported */}
-                <NotificationManager 
-                  users={visibleUsers}
-                  onUpdateUser={updateUser}
-                  currentAdminName={currentUser?.fullName || 'Admin'}
-                />
+                <div className="space-y-4">
+                  <NotificationManager 
+                    users={visibleUsers}
+                    onUpdateUser={updateUser}
+                    currentAdminName={currentUser?.fullName || 'Admin'}
+                  />
+                  <EnhancedMessageManager 
+                    users={visibleUsers}
+                    currentUser={currentUser!}
+                  />
+                </div>
               </TabsContent>
             )}
 
             {/* Import Users Tab */}
             {(isMasterAdmin || currentUser?.role === 'admin') && (
               <TabsContent value="import" className="space-y-4">
-                {/* Assuming CSVImport component exists and is imported */}
-                <CSVImport onImportComplete={handleImportComplete} />
+                <div className="space-y-4">
+                  <CSVImport onImportComplete={handleImportComplete} />
+                  <ExcelImport onImportComplete={handleImportComplete} />
+                </div>
               </TabsContent>
             )}
 
             {/* Admin Assignment Tab */}
             {isMasterAdmin && (
               <TabsContent value="admin-assignment" className="space-y-4">
-                {/* Assuming CustomAdminManager component exists and is imported */}
                 <CustomAdminManager 
                   users={users}
                   onUpdateUser={updateUser}
@@ -917,7 +914,6 @@ const AdminDashboard: React.FC = () => {
             {/* New Year Management Tab */}
             {isMasterAdmin && (
               <TabsContent value="new-year" className="space-y-4">
-                {/* Assuming NewYearManager component exists and is imported */}
                 <NewYearManager 
                   users={users}
                   onNewYear={handleNewYear}
