@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import Login from '../components/Login';
 import Register from '../components/Register';
-import DynamicRegistrationForm from '../components/DynamicRegistrationForm';
 import UserDashboard from '../components/UserDashboard';
 import AdminDashboard from '../components/AdminDashboard';
 
@@ -23,7 +22,7 @@ const Index = () => {
 
   // Show login or register form
   if (showRegister) {
-    return <DynamicRegistrationForm onSwitchToLogin={() => setShowRegister(false)} />;
+    return <Register onSwitchToLogin={() => setShowRegister(false)} />;
   }
 
   return <Login onSwitchToRegister={() => setShowRegister(true)} />;
