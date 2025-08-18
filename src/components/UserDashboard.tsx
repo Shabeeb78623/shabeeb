@@ -14,7 +14,7 @@ import UserProfileEditor from './UserProfileEditor';
 import RenewalNotification from './RenewalNotification';
 
 const UserDashboard: React.FC = () => {
-  const { currentUser, isAdmin, logout, changePassword } = useAuth();
+  const { currentUser, isAdmin, logout, changePassword, submitPayment } = useAuth();
   const [submittingPayment, setSubmittingPayment] = useState(false);
   const [paymentRemarks, setPaymentRemarks] = useState('');
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
@@ -28,7 +28,7 @@ const UserDashboard: React.FC = () => {
 
   if (!currentUser) return null;
 
-  const handlePaymentSubmission = () => {
+  const handlePaymentSubmission = async () => {
     if (!paymentRemarks.trim()) {
       toast({
         title: "Error",
@@ -41,45 +41,29 @@ const UserDashboard: React.FC = () => {
     const amount = currentUser.isReregistration || currentUser.isImported ? 50 : 60;
     setSubmittingPayment(true);
     
-    // Update user's payment submission status
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const updatedUsers = users.map((user: any) => {
-      if (user.id === currentUser.id) {
-        return {
-          ...user,
-          paymentSubmission: {
-            submitted: true,
-            submissionDate: new Date().toISOString(),
-            approvalStatus: 'pending',
-            userRemarks: paymentRemarks.trim(),
-            amount: amount
-          }
-        };
+    try {
+      const success = await submitPayment(amount, paymentRemarks.trim());
+      if (success) {
+        setSubmittingPayment(false);
+        setPaymentRemarks('');
+        toast({
+          title: "Payment Submitted",
+          description: `Your payment submission (AED ${amount}) is now pending admin approval.`,
+        });
+        
+        // Refresh the page to show updated status
+        window.location.reload();
+      } else {
+        throw new Error('Payment submission failed');
       }
-      return user;
-    });
-    
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-    localStorage.setItem('currentUser', JSON.stringify({
-      ...currentUser,
-      paymentSubmission: {
-        submitted: true,
-        submissionDate: new Date().toISOString(),
-        approvalStatus: 'pending',
-        userRemarks: paymentRemarks.trim(),
-        amount: amount
-      }
-    }));
-    
-    setSubmittingPayment(false);
-    setPaymentRemarks('');
-    toast({
-      title: "Payment Submitted",
-      description: `Your payment submission (AED ${amount}) is now pending admin approval.`,
-    });
-    
-    // Refresh the page to show updated status
-    window.location.reload();
+    } catch (error) {
+      setSubmittingPayment(false);
+      toast({
+        title: "Error",
+        description: "Failed to submit payment. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handlePasswordChange = async () => {

@@ -222,13 +222,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const changePassword = async (oldPassword: string, newPassword: string): Promise<boolean> => {
-    // This is a simplified implementation - in real app you'd verify the old password
-    if (currentUser) {
-      // In a real implementation, update password in database
-      console.log('Password changed for user:', currentUser.email);
-      return true;
+    if (!currentUser) return false;
+    
+    // Verify old password - imported users use Emirates ID, others use their set password
+    const isCorrectOldPassword = currentUser.isImported 
+      ? currentUser.emiratesId === oldPassword 
+      : currentUser.password === oldPassword;
+    
+    if (!isCorrectOldPassword) {
+      return false;
     }
-    return false;
+    
+    // Update password in user data
+    const updatedUser = { ...currentUser, password: newPassword };
+    updateCurrentUser(updatedUser);
+    
+    console.log('Password changed successfully for user:', currentUser.email);
+    return true;
   };
 
   const requestPasswordReset = async (email: string): Promise<boolean> => {
