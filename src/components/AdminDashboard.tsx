@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ResponsiveAdminTabs from './ResponsiveAdminTabs';
-import ImprovedRegistrationQuestionsManager from './ImprovedRegistrationQuestionsManager';
+import FixedRegistrationQuestionsManager from './FixedRegistrationQuestionsManager';
 import UsersDataTable from './UsersDataTable';
 import UsersOverview from './UsersOverview';
 import EnhancedBenefitManager from './EnhancedBenefitManager';
@@ -907,7 +907,7 @@ const AdminDashboard: React.FC = () => {
             {/* Registration Questions Tab */}
             {isMasterAdmin && (
               <TabsContent value="questions" className="space-y-4">
-                <ImprovedRegistrationQuestionsManager />
+                <FixedRegistrationQuestionsManager />
               </TabsContent>
             )}
 

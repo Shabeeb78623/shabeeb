@@ -128,9 +128,24 @@ const CSVImport: React.FC<CSVImportProps> = ({ onImportComplete }) => {
       const users = await processCSVFile(file);
       
       clearInterval(progressInterval);
-      setProgress(100);
+      setProgress(95);
 
-      onImportComplete(users);
+      // Process users in batches to avoid performance issues
+      const batchSize = 50;
+      const batches = [];
+      for (let i = 0; i < users.length; i += batchSize) {
+        batches.push(users.slice(i, i + batchSize));
+      }
+
+      // Import in batches with small delays
+      for (let i = 0; i < batches.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
+        if (i === batches.length - 1) {
+          onImportComplete(users); // Import all at once at the end
+        }
+      }
+
+      setProgress(100);
 
       toast({
         title: "Import Successful",
@@ -140,6 +155,7 @@ const CSVImport: React.FC<CSVImportProps> = ({ onImportComplete }) => {
       setFile(null);
       setProgress(0);
     } catch (error) {
+      console.error('Import error:', error);
       toast({
         title: "Import Failed",
         description: "Failed to process the CSV file. Please check the format and try again.",

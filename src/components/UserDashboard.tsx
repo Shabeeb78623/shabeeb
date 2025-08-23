@@ -8,10 +8,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Bell, Eye, EyeOff, Trash2, Maximize } from 'lucide-react';
+import { Bell, Eye, EyeOff, Trash2, Maximize, Download, Settings } from 'lucide-react';
 import AdminDashboard from './AdminDashboard';
 import UserProfileEditor from './UserProfileEditor';
 import RenewalNotification from './RenewalNotification';
+import MembershipCardDownload from './MembershipCardDownload';
+import AccountCenter from './AccountCenter';
 
 const UserDashboard: React.FC = () => {
   const { currentUser, isAdmin, logout, changePassword, submitPayment } = useAuth();
@@ -24,6 +26,7 @@ const UserDashboard: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [expandedNotification, setExpandedNotification] = useState<string | null>(null);
+  const [showAccountCenter, setShowAccountCenter] = useState(false);
   const { toast } = useToast();
 
   if (!currentUser) return null;
@@ -162,6 +165,24 @@ const UserDashboard: React.FC = () => {
     window.location.reload();
   };
 
+  const handleChangeRequest = (field: string, oldValue: string, newValue: string, reason: string) => {
+    // Save change request to localStorage for admin review
+    const changeRequests = JSON.parse(localStorage.getItem('changeRequests') || '[]');
+    const newRequest = {
+      id: Date.now().toString(),
+      userId: currentUser.id,
+      userName: currentUser.fullName,
+      field,
+      oldValue,
+      newValue,
+      reason,
+      status: 'pending',
+      requestDate: new Date().toISOString()
+    };
+    changeRequests.push(newRequest);
+    localStorage.setItem('changeRequests', JSON.stringify(changeRequests));
+  };
+
   const unreadNotifications = currentUser.notifications?.filter(n => !n.read).length || 0;
 
   const getStatusColor = (status: string) => {
@@ -221,6 +242,14 @@ const UserDashboard: React.FC = () => {
                     <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border z-50 max-h-96 overflow-y-auto">
                       <div className="p-4 border-b">
                         <h3 className="font-semibold">Notifications</h3>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="absolute top-2 right-2"
+                          onClick={() => setShowNotifications(false)}
+                        >
+                          ×
+                        </Button>
                       </div>
                       <div className="max-h-64 overflow-y-auto">
                         {currentUser.notifications && currentUser.notifications.length > 0 ? (
@@ -284,6 +313,27 @@ const UserDashboard: React.FC = () => {
                   )}
                 </div>
 
+                <MembershipCardDownload user={currentUser} />
+
+                <Dialog open={showAccountCenter} onOpenChange={setShowAccountCenter}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Settings className="h-4 w-4 mr-2" />
+                      Account Center
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Account Center</DialogTitle>
+                    </DialogHeader>
+                    <AccountCenter 
+                      user={currentUser} 
+                      onUpdateUser={updateUserProfile}
+                      onRequestChange={handleChangeRequest}
+                    />
+                  </DialogContent>
+                </Dialog>
+
                 <Dialog open={showPasswordChange} onOpenChange={setShowPasswordChange}>
                   <DialogTrigger asChild>
                     <Button variant="outline" size="sm">
@@ -335,9 +385,8 @@ const UserDashboard: React.FC = () => {
           </div>
           
           <Tabs defaultValue="user" className="space-y-4">
-            <TabsList className="grid grid-cols-3 w-full max-w-lg">
+            <TabsList className="grid grid-cols-2 w-full max-w-lg">
               <TabsTrigger value="user">Dashboard</TabsTrigger>
-              <TabsTrigger value="profile">Edit Profile</TabsTrigger>
               <TabsTrigger value="admin">Admin</TabsTrigger>
             </TabsList>
 
@@ -680,6 +729,27 @@ const UserDashboard: React.FC = () => {
                       Change Password
                     </Button>
                   </div>
+                </DialogContent>
+              </Dialog>
+
+              <MembershipCardDownload user={currentUser} />
+
+              <Dialog open={showAccountCenter} onOpenChange={setShowAccountCenter}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Account Center
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Account Center</DialogTitle>
+                  </DialogHeader>
+                  <AccountCenter 
+                    user={currentUser} 
+                    onUpdateUser={updateUserProfile}
+                    onRequestChange={handleChangeRequest}
+                  />
                 </DialogContent>
               </Dialog>
 
