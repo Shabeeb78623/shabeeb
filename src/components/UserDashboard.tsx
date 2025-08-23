@@ -12,9 +12,6 @@ import { Bell, Eye, EyeOff, Trash2, Maximize } from 'lucide-react';
 import AdminDashboard from './AdminDashboard';
 import UserProfileEditor from './UserProfileEditor';
 import RenewalNotification from './RenewalNotification';
-import AccountCenter from './AccountCenter';
-import MembershipCardDownload from './MembershipCardDownload';
-import UserBenefitsView from './UserBenefitsView';
 
 const UserDashboard: React.FC = () => {
   const { currentUser, isAdmin, logout, changePassword, submitPayment } = useAuth();
@@ -338,10 +335,9 @@ const UserDashboard: React.FC = () => {
           </div>
           
           <Tabs defaultValue="user" className="space-y-4">
-            <TabsList className="grid grid-cols-4 w-full max-w-2xl">
+            <TabsList className="grid grid-cols-3 w-full max-w-lg">
               <TabsTrigger value="user">Dashboard</TabsTrigger>
-              <TabsTrigger value="account">Account Center</TabsTrigger>
-              <TabsTrigger value="card">Membership Card</TabsTrigger>
+              <TabsTrigger value="profile">Edit Profile</TabsTrigger>
               <TabsTrigger value="admin">Admin</TabsTrigger>
             </TabsList>
 
@@ -576,12 +572,11 @@ const UserDashboard: React.FC = () => {
               </Card>
             </TabsContent>
 
-            <TabsContent value="account">
-              <AccountCenter />
-            </TabsContent>
-
-            <TabsContent value="card">
-              <MembershipCardDownload user={currentUser} />
+            <TabsContent value="profile">
+              <UserProfileEditor 
+                user={currentUser}
+                onUpdateUser={updateUserProfile}
+              />
             </TabsContent>
 
             <TabsContent value="admin">
@@ -696,21 +691,13 @@ const UserDashboard: React.FC = () => {
         </div>
       </header>
 
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Renewal Notification - no props needed */}
-          <div className="mb-6">
-            <RenewalNotification />
-          </div>
-          
-          <Tabs defaultValue="user" className="space-y-4">
-            <TabsList className="grid grid-cols-3 w-full max-w-lg">
-              <TabsTrigger value="user">Dashboard</TabsTrigger>
-              <TabsTrigger value="account">Account Center</TabsTrigger>
-              <TabsTrigger value="card">Membership Card</TabsTrigger>
-            </TabsList>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Renewal Notification - no props needed */}
+        <div className="mb-6">
+          <RenewalNotification />
+        </div>
 
-            <TabsContent value="user">
-              {/* Status Card */}
+        {/* Status Card */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
@@ -933,20 +920,10 @@ const UserDashboard: React.FC = () => {
                 <p className="text-gray-900">{currentUser.nominee} ({currentUser.relation})</p>
               </div>
             </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="account">
-          <AccountCenter />
-        </TabsContent>
-
-        <TabsContent value="card">
-          <MembershipCardDownload user={currentUser} />
-        </TabsContent>
-      </Tabs>
-    </main>
-  </div>
+          </CardContent>
+        </Card>
+      </main>
+    </div>
   );
 };
 
