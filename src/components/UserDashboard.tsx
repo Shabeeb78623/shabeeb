@@ -16,7 +16,7 @@ import MembershipCardDownload from './MembershipCardDownload';
 import AccountCenter from './AccountCenter';
 
 const UserDashboard: React.FC = () => {
-  const { currentUser, isAdmin, logout, changePassword, submitPayment } = useAuth();
+  const { currentUser, isAdmin, logout, changePassword, submitPayment, updateCurrentUser, availableYears } = useAuth();
   const [submittingPayment, setSubmittingPayment] = useState(false);
   const [paymentRemarks, setPaymentRemarks] = useState('');
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
@@ -115,7 +115,10 @@ const UserDashboard: React.FC = () => {
       ) || []
     };
     
-    // Update localStorage
+    // Update using auth context
+    updateCurrentUser(updatedUser);
+    
+    // Also update localStorage for persistence
     const users = JSON.parse(localStorage.getItem('users') || '[]');
     const updatedUsers = users.map((user: any) => 
       user.id === currentUser.id ? updatedUser : user
@@ -130,20 +133,23 @@ const UserDashboard: React.FC = () => {
       notifications: currentUser.notifications?.filter(notif => notif.id !== notificationId) || []
     };
     
-    // Update localStorage
+    // Update using auth context
+    updateCurrentUser(updatedUser);
+    
+    // Also update localStorage for persistence
     const users = JSON.parse(localStorage.getItem('users') || '[]');
     const updatedUsers = users.map((user: any) => 
       user.id === currentUser.id ? updatedUser : user
     );
     localStorage.setItem('users', JSON.stringify(updatedUsers));
     localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-    
-    // Update current user state
-    window.location.reload();
   };
 
   const updateUserProfile = (updatedUser: any) => {
-    // Update localStorage
+    // Update using auth context
+    updateCurrentUser(updatedUser);
+    
+    // Also update localStorage for persistence
     const users = JSON.parse(localStorage.getItem('users') || '[]');
     const updatedUsers = users.map((user: any) => 
       user.id === currentUser.id ? updatedUser : user
@@ -160,9 +166,6 @@ const UserDashboard: React.FC = () => {
       )
     }));
     localStorage.setItem('yearlyData', JSON.stringify(updatedYearlyData));
-    
-    // Refresh the page to show updated data
-    window.location.reload();
   };
 
   const handleChangeRequest = (field: string, oldValue: string, newValue: string, reason: string) => {
@@ -239,8 +242,8 @@ const UserDashboard: React.FC = () => {
                   </Button>
                   
                   {showNotifications && (
-                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border z-50 max-h-96 overflow-y-auto">
-                      <div className="p-4 border-b">
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border z-[9999] max-h-96 overflow-y-auto">
+                      <div className="p-4 border-b bg-white rounded-t-lg">
                         <h3 className="font-semibold">Notifications</h3>
                         <Button 
                           variant="ghost" 
@@ -379,9 +382,11 @@ const UserDashboard: React.FC = () => {
         </header>
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Renewal Notification - no props needed */}
+          {/* Renewal Notification - conditional based on available years */}
           <div className="mb-6">
-            <RenewalNotification />
+            {(availableYears.length === 1 || Math.max(...availableYears) <= 2025) && (
+              <RenewalNotification />
+            )}
           </div>
           
           <Tabs defaultValue="user" className="space-y-4">

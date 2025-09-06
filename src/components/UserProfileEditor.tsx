@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, Save } from 'lucide-react';
+import { compressImage } from '../utils/imageCompression';
 
 interface UserProfileEditorProps {
   user: User;
@@ -32,26 +33,45 @@ const UserProfileEditor: React.FC<UserProfileEditorProps> = ({ user, onUpdateUse
 
   const relations = ['Father', 'Mother', 'Son', 'Daughter', 'Wife', 'Husband'];
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
+      setUploading(true);
+      
+      try {
+        // Compress the image automatically if needed
+        const compressedFile = await compressImage(file);
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const result = e.target?.result as string;
+          setEditedUser({ ...editedUser, photo: result });
+          setUploading(false);
+          
+          if (compressedFile.size < file.size) {
+            toast({
+              title: "Image compressed",
+              description: `Image was automatically compressed from ${Math.round(file.size / 1024)}KB to ${Math.round(compressedFile.size / 1024)}KB for optimal storage.`,
+            });
+          }
+        };
+        reader.onerror = () => {
+          setUploading(false);
+          toast({
+            title: "Upload failed",
+            description: "Failed to process the image. Please try again.",
+            variant: "destructive"
+          });
+        };
+        reader.readAsDataURL(compressedFile);
+      } catch (error) {
+        setUploading(false);
         toast({
-          title: "File too large",
-          description: "Please select an image smaller than 5MB.",
+          title: "Upload failed",
+          description: "Failed to process the image. Please try again.",
           variant: "destructive"
         });
-        return;
       }
-
-      setUploading(true);
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        setEditedUser({ ...editedUser, photo: result });
-        setUploading(false);
-      };
-      reader.readAsDataURL(file);
     }
   };
 
