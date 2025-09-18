@@ -46,7 +46,7 @@ const MessageManager: React.FC<MessageManagerProps> = ({ users, currentUser }) =
     );
 
     // Filter by mandalam if user is mandalam admin
-    if (currentUser.role === 'mandalam_admin' && currentUser.mandalamAccess) {
+    if (currentUser?.role === 'mandalam_admin' && currentUser.mandalamAccess) {
       filtered = filtered.filter(user => user.mandalam === currentUser.mandalamAccess);
     }
 
