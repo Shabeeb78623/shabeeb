@@ -6,9 +6,9 @@ export interface User {
   mobileNo: string;
   whatsApp: string;
   nominee: string;
-  relation: 'Father' | 'Mother' | 'Son' | 'Daughter' | 'Wife' | 'Husband';
+  relation?: 'Father' | 'Mother' | 'Son' | 'Daughter' | 'Wife' | 'Husband' | '';
   emirate: string;
-  mandalam: 'BALUSHERI' | 'KUNNAMANGALAM' | 'KODUVALLI' | 'NADAPURAM' | 'KOYLANDI' | 'VADAKARA' | 'BEPUR' | 'KUTTIYADI';
+  mandalam: string;
   email: string;
   addressUAE: string;
   addressIndia: string;
@@ -21,9 +21,10 @@ export interface User {
   emiratesId: string;
   password?: string;
   isImported?: boolean;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'renewal_pending';
   role: 'user' | 'admin' | 'master_admin' | 'mandalam_admin' | 'custom_admin';
-  mandalamAccess?: 'BALUSHERI' | 'KUNNAMANGALAM' | 'KODUVALLI' | 'NADAPURAM' | 'KOYLANDI' | 'VADAKARA' | 'BEPUR' | 'KUTTIYADI';
+  mandalamAccess?: string;
+  paymentDate?: string;
   customPermissions?: {
     canViewUsers: boolean;
     canEditUsers: boolean;
@@ -60,8 +61,10 @@ export interface Notification {
   title: string;
   message: string;
   date: string;
-  read: boolean;
-  fromAdmin: string;
+  isRead: boolean;
+  sentBy: string;
+  read?: boolean;
+  fromAdmin?: string;
 }
 
 export interface BenefitUsage {

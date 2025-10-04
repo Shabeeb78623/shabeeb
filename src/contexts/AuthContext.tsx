@@ -1,9 +1,12 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, YearlyData } from '../types/user';
+import { User as AuthUser, Session } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
+import { User } from '../types/user';
 
 interface AuthContextType {
   currentUser: User | null;
+  authUser: AuthUser | null;
+  session: Session | null;
   isAdmin: boolean;
   isMasterAdmin: boolean;
   currentYear: number;
@@ -16,10 +19,11 @@ interface AuthContextType {
   resetPassword: (token: string, newPassword: string) => Promise<boolean>;
   switchYear: (year: number) => void;
   createNewYear: () => void;
-  getCurrentYearUsers: () => User[];
+  getCurrentYearUsers: () => Promise<User[]>;
   updateCurrentUser: (updatedUser: User) => void;
   submitPayment: (amount: number, remarks: string) => Promise<boolean>;
   updateUser: (updatedUser: User) => void;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,186 +38,276 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isMasterAdmin, setIsMasterAdmin] = useState(false);
   const [currentYear, setCurrentYear] = useState(2025);
   const [availableYears, setAvailableYears] = useState<number[]>([2025]);
+  const [loading, setLoading] = useState(true);
 
+  // Initialize auth state
   useEffect(() => {
-    const savedUser = localStorage.getItem('currentUser');
-    const savedIsAdmin = localStorage.getItem('isAdmin');
-    const savedIsMasterAdmin = localStorage.getItem('isMasterAdmin');
-    const savedCurrentYear = localStorage.getItem('currentYear');
-    const savedAvailableYears = localStorage.getItem('availableYears');
-    
-    if (savedUser) {
-      setCurrentUser(JSON.parse(savedUser));
-    }
-    if (savedIsAdmin) {
-      setIsAdmin(JSON.parse(savedIsAdmin));
-    }
-    if (savedIsMasterAdmin) {
-      setIsMasterAdmin(JSON.parse(savedIsMasterAdmin));
-    }
-    if (savedCurrentYear) {
-      setCurrentYear(JSON.parse(savedCurrentYear));
-    }
-    if (savedAvailableYears) {
-      setAvailableYears(JSON.parse(savedAvailableYears));
-    }
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setAuthUser(session?.user ?? null);
+        
+        // Defer loading profile data
+        if (session?.user) {
+          setTimeout(() => {
+            loadUserProfile(session.user.id);
+          }, 0);
+        } else {
+          setCurrentUser(null);
+          setIsAdmin(false);
+          setIsMasterAdmin(false);
+          setLoading(false);
+        }
+      }
+    );
 
-    // Initialize yearly data structure if not exists
-    const yearlyData = localStorage.getItem('yearlyData');
-    if (!yearlyData) {
-      const initialData: YearlyData[] = [{
-        year: 2025,
-        users: JSON.parse(localStorage.getItem('users') || '[]'),
-        isActive: true
-      }];
-      localStorage.setItem('yearlyData', JSON.stringify(initialData));
-    }
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setAuthUser(session?.user ?? null);
+      if (session?.user) {
+        loadUserProfile(session.user.id);
+      } else {
+        setLoading(false);
+      }
+    });
+
+    // Load available years
+    loadYears();
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const generateRegNo = (year: number) => {
-    const yearlyData: YearlyData[] = JSON.parse(localStorage.getItem('yearlyData') || '[]');
-    const currentYearData = yearlyData.find(data => data.year === year);
-    const users = currentYearData?.users || [];
-    const nextNumber = users.length + 1;
-    return `${year}${nextNumber.toString().padStart(4, '0')}`;
+  const loadUserProfile = async (userId: string) => {
+    try {
+      // Get profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (profileError) throw profileError;
+
+      // Get user role
+      const { data: roles, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role, mandalam_access')
+        .eq('user_id', userId);
+
+      if (roleError) throw roleError;
+
+      const userRole = roles?.[0]?.role || 'user';
+      const isMaster = userRole === 'master_admin';
+      const isAdminUser = userRole === 'mandalam_admin' || isMaster;
+
+      // Get notifications
+      const { data: notifications } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      // Get benefits used
+      const { data: benefits } = await supabase
+        .from('user_benefits')
+        .select('*')
+        .eq('user_id', userId)
+        .order('used_date', { ascending: false });
+
+      // Map to User type
+      const mappedUser: User = {
+        id: profile.id,
+        regNo: `${profile.registration_year}${profile.id.substring(0, 4)}`,
+        fullName: profile.full_name,
+        mobileNo: profile.phone_number,
+        whatsApp: profile.phone_number,
+        nominee: '',
+        relation: '',
+        emirate: profile.emirate,
+        mandalam: profile.mandalam,
+        email: profile.email || '',
+        addressUAE: '',
+        addressIndia: '',
+        kmccMember: false,
+        kmccMembershipNumber: '',
+        pratheekshaMember: false,
+        pratheekshaMembershipNumber: '',
+        recommendedBy: '',
+        photo: profile.profile_photo_url || '',
+        emiratesId: profile.emirates_id || '',
+        password: '',
+        isImported: false,
+        status: profile.status || 'pending',
+        role: userRole,
+        mandalamAccess: roles?.[0]?.mandalam_access,
+        registrationDate: profile.created_at,
+        registrationYear: profile.registration_year,
+        isReregistration: false,
+        paymentStatus: !!profile.payment_date,
+        paymentAmount: Number(profile.payment_amount) || 0,
+        paymentRemarks: '',
+        paymentDate: profile.payment_date,
+        paymentSubmission: {
+          submitted: !!profile.payment_date,
+          approvalStatus: profile.status === 'approved' ? 'approved' : 'pending'
+        },
+        benefitsUsed: benefits?.map(b => ({
+          type: b.benefit_type,
+          remarks: b.remarks || '',
+          amountPaid: Number(b.amount_paid) || 0,
+          date: b.used_date
+        })) || [],
+        notifications: notifications?.map(n => ({
+          id: n.id,
+          title: n.title,
+          message: n.message,
+          date: n.created_at,
+          isRead: n.is_read,
+          sentBy: n.sent_by
+        })) || [],
+      };
+
+      setCurrentUser(mappedUser);
+      setIsAdmin(isAdminUser);
+      setIsMasterAdmin(isMaster);
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const getCurrentYearUsers = (): User[] => {
-    const yearlyData: YearlyData[] = JSON.parse(localStorage.getItem('yearlyData') || '[]');
-    const currentYearData = yearlyData.find(data => data.year === currentYear);
-    return currentYearData?.users || [];
-  };
+  const loadYears = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('year_configs')
+        .select('year')
+        .order('year', { ascending: true });
 
-  const updateYearlyData = (year: number, users: User[]) => {
-    const yearlyData: YearlyData[] = JSON.parse(localStorage.getItem('yearlyData') || '[]');
-    const updatedData = yearlyData.map(data => 
-      data.year === year ? { ...data, users } : data
-    );
-    localStorage.setItem('yearlyData', JSON.stringify(updatedData));
-    
-    if (year === currentYear) {
-      localStorage.setItem('users', JSON.stringify(users));
+      if (error) throw error;
+
+      const years = data?.map(y => y.year) || [2025];
+      setAvailableYears(years);
+    } catch (error) {
+      console.error('Error loading years:', error);
+      setAvailableYears([2025]);
     }
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // Check master admin credentials
-    if (email === 'admin' && password === 'admin123') {
-      setIsAdmin(true);
-      setIsMasterAdmin(true);
-      localStorage.setItem('isAdmin', 'true');
-      localStorage.setItem('isMasterAdmin', 'true');
-      return true;
-    }
+    try {
+      // Try standard login
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    // Check user credentials across all years
-    const yearlyData: YearlyData[] = JSON.parse(localStorage.getItem('yearlyData') || '[]');
-    let foundUser: User | null = null;
-
-    for (const data of yearlyData) {
-      // Try email/phone login
-      const user = data.users.find((u: User) => 
-        u.email === email || u.mobileNo === email
-      );
-      if (user) {
-        // Check password - imported users use Emirates ID as password, others use their set password
-        const isCorrectPassword = user.isImported 
-          ? user.emiratesId === password 
-          : user.password === password;
-        
-        if (isCorrectPassword) {
-          foundUser = user;
-          break;
-        }
+      if (error) {
+        // Handle login failure
+        return false;
       }
-    }
-    
-    if (foundUser) {
-      setCurrentUser(foundUser);
-      const adminRoles = ['admin', 'master_admin', 'mandalam_admin', 'custom_admin'];
-      setIsAdmin(adminRoles.includes(foundUser.role));
-      setIsMasterAdmin(false);
-      localStorage.setItem('currentUser', JSON.stringify(foundUser));
-      localStorage.setItem('isAdmin', adminRoles.includes(foundUser.role) ? 'true' : 'false');
-      localStorage.setItem('isMasterAdmin', 'false');
-      return true;
-    }
 
-    return false;
+      return true;
+    } catch (error) {
+      console.error('Login error:', error);
+      return false;
+    }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setCurrentUser(null);
+    setAuthUser(null);
+    setSession(null);
     setIsAdmin(false);
     setIsMasterAdmin(false);
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('isAdmin');
-    localStorage.removeItem('isMasterAdmin');
   };
 
   const register = async (userData: any): Promise<boolean> => {
     try {
-      const users = getCurrentYearUsers();
-      
-      if (users.some((u: User) => u.email === userData.email || u.mobileNo === userData.mobileNo || u.emiratesId === userData.emiratesId)) {
-        return false;
-      }
-
+      // Validate Emirates ID format
       if (!/^\d{15}$/.test(userData.emiratesId)) {
         throw new Error('Emirates ID must be exactly 15 digits');
       }
 
-      // Determine payment amount based on registration type
-      let paymentAmount = 60; // Default for new users
-      if (userData.isReregistration || userData.isImported) {
-        paymentAmount = 50; // Renewal/imported users
+      // Check if user already exists
+      const { data: existingProfiles } = await supabase
+        .from('profiles')
+        .select('id')
+        .or(`email.eq.${userData.email},phone_number.eq.${userData.mobileNo},emirates_id.eq.${userData.emiratesId}`)
+        .limit(1);
+
+      if (existingProfiles && existingProfiles.length > 0) {
+        return false;
       }
 
-      const newUser: User = {
-        id: Date.now().toString(),
-        regNo: generateRegNo(currentYear),
-        fullName: userData.fullName,
-        mobileNo: userData.mobileNo,
-        whatsApp: userData.whatsApp,
-        nominee: userData.nominee,
-        relation: userData.relation,
-        emirate: userData.emirate,
-        mandalam: userData.mandalam,
+      // Create auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: userData.email,
-        addressUAE: userData.addressUAE,
-        addressIndia: userData.addressIndia,
-        kmccMember: userData.kmccMember,
-        kmccMembershipNumber: userData.kmccMembershipNumber,
-        pratheekshaMember: userData.pratheekshaMember,
-        pratheekshaMembershipNumber: userData.pratheekshaMembershipNumber,
-        recommendedBy: userData.recommendedBy,
-        photo: userData.photo,
-        emiratesId: userData.emiratesId,
         password: userData.password,
-        isImported: userData.isImported || false,
-        status: 'pending',
-        role: 'user',
-        registrationDate: new Date().toISOString(),
-        registrationYear: currentYear,
-        isReregistration: userData.isReregistration || false,
-        originalUserId: userData.originalUserId,
-        paymentStatus: false,
-        paymentAmount: paymentAmount,
-        paymentRemarks: '',
-        paymentSubmission: {
-          submitted: false,
-          approvalStatus: 'pending'
-        },
-        benefitsUsed: [],
-        notifications: [],
-      };
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            full_name: userData.fullName,
+          }
+        }
+      });
 
-      const updatedUsers = [...users, newUser];
-      updateYearlyData(currentYear, updatedUsers);
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('Failed to create user');
+
+      // Upload photo if provided
+      let profilePhotoUrl = '';
+      if (userData.photo) {
+        const fileName = `${authData.user.id}/profile.jpg`;
+        const { error: uploadError } = await supabase.storage
+          .from('profile-photos')
+          .upload(fileName, await fetch(userData.photo).then(r => r.blob()), {
+            upsert: true
+          });
+
+        if (!uploadError) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('profile-photos')
+            .getPublicUrl(fileName);
+          profilePhotoUrl = publicUrl;
+        }
+      }
+
+      // Create profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: authData.user.id,
+          full_name: userData.fullName,
+          phone_number: userData.mobileNo,
+          email: userData.email,
+          emirates_id: userData.emiratesId,
+          mandalam: userData.mandalam,
+          emirate: userData.emirate,
+          registration_year: currentYear,
+          status: 'pending',
+          profile_photo_url: profilePhotoUrl,
+        });
+
+      if (profileError) throw profileError;
+
+      // Create default user role
+      await supabase
+        .from('user_roles')
+        .insert({
+          user_id: authData.user.id,
+          role: 'user'
+        });
+
       return true;
     } catch (error) {
       console.error('Registration error:', error);
@@ -222,132 +316,163 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const changePassword = async (oldPassword: string, newPassword: string): Promise<boolean> => {
-    if (!currentUser) return false;
-    
-    // Verify old password - imported users use Emirates ID, others use their set password
-    const isCorrectOldPassword = currentUser.isImported 
-      ? currentUser.emiratesId === oldPassword 
-      : currentUser.password === oldPassword;
-    
-    if (!isCorrectOldPassword) {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Password change error:', error);
       return false;
     }
-    
-    // Update password in user data
-    const updatedUser = { ...currentUser, password: newPassword };
-    updateCurrentUser(updatedUser);
-    
-    console.log('Password changed successfully for user:', currentUser.email);
-    return true;
   };
 
   const requestPasswordReset = async (email: string): Promise<boolean> => {
-    // Generate reset token and send email (simplified)
-    const token = Math.random().toString(36).substring(2, 15);
-    const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
-    
-    // In real implementation, you'd send an email with the reset link
-    console.log(`Password reset requested for ${email}. Token: ${token}`);
-    return true;
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/`,
+      });
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Password reset request error:', error);
+      return false;
+    }
   };
 
   const resetPassword = async (token: string, newPassword: string): Promise<boolean> => {
-    // Validate token and update password (simplified)
-    console.log('Password reset with token:', token);
-    return true;
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Password reset error:', error);
+      return false;
+    }
   };
 
   const switchYear = (year: number) => {
     setCurrentYear(year);
-    localStorage.setItem('currentYear', JSON.stringify(year));
-    
-    const users = getCurrentYearUsers();
-    localStorage.setItem('users', JSON.stringify(users));
   };
 
-  const createNewYear = () => {
+  const createNewYear = async () => {
     const newYear = Math.max(...availableYears) + 1;
-    const newAvailableYears = [...availableYears, newYear];
     
-    setAvailableYears(newAvailableYears);
-    setCurrentYear(newYear);
-    localStorage.setItem('availableYears', JSON.stringify(newAvailableYears));
-    localStorage.setItem('currentYear', JSON.stringify(newYear));
-    
-    const yearlyData: YearlyData[] = JSON.parse(localStorage.getItem('yearlyData') || '[]');
-    const newYearData: YearlyData = {
-      year: newYear,
-      users: [],
-      isActive: true
-    };
-    
-    const updatedYearlyData = yearlyData.map(data => ({ ...data, isActive: false }));
-    updatedYearlyData.push(newYearData);
-    
-    localStorage.setItem('yearlyData', JSON.stringify(updatedYearlyData));
-    localStorage.setItem('users', JSON.stringify([]));
+    try {
+      await supabase
+        .from('year_configs')
+        .insert({ year: newYear, is_active: true });
+
+      setAvailableYears([...availableYears, newYear]);
+      setCurrentYear(newYear);
+    } catch (error) {
+      console.error('Error creating new year:', error);
+    }
+  };
+
+  const getCurrentYearUsers = async (): Promise<User[]> => {
+    try {
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('registration_year', currentYear);
+
+      if (error) throw error;
+
+      return profiles?.map(p => ({
+        id: p.id,
+        regNo: `${p.registration_year}${p.id.substring(0, 4)}`,
+        fullName: p.full_name,
+        mobileNo: p.phone_number,
+        whatsApp: p.phone_number,
+        nominee: '',
+        relation: '',
+        emirate: p.emirate,
+        mandalam: p.mandalam,
+        email: p.email || '',
+        addressUAE: '',
+        addressIndia: '',
+        kmccMember: false,
+        kmccMembershipNumber: '',
+        pratheekshaMember: false,
+        pratheekshaMembershipNumber: '',
+        recommendedBy: '',
+        photo: p.profile_photo_url || '',
+        emiratesId: p.emirates_id || '',
+        password: '',
+        isImported: false,
+        status: p.status || 'pending',
+        role: 'user',
+        registrationDate: p.created_at,
+        registrationYear: p.registration_year,
+        isReregistration: false,
+        paymentStatus: !!p.payment_date,
+        paymentAmount: Number(p.payment_amount) || 0,
+        paymentRemarks: '',
+        paymentDate: p.payment_date,
+        paymentSubmission: {
+          submitted: !!p.payment_date,
+          approvalStatus: p.status === 'approved' ? 'approved' : 'pending'
+        },
+        benefitsUsed: [],
+        notifications: [],
+      })) || [];
+    } catch (error) {
+      console.error('Error loading users:', error);
+      return [];
+    }
   };
 
   const updateCurrentUser = (updatedUser: User) => {
     setCurrentUser(updatedUser);
-    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-    
-    // Update in yearly data
-    const yearlyData: YearlyData[] = JSON.parse(localStorage.getItem('yearlyData') || '[]');
-    const updatedYearlyData = yearlyData.map(data => ({
-      ...data,
-      users: data.users.map(user => user.id === updatedUser.id ? updatedUser : user)
-    }));
-    localStorage.setItem('yearlyData', JSON.stringify(updatedYearlyData));
-
-    // Update current users array for current year
-    const currentUsers = getCurrentYearUsers();
-    const updatedCurrentUsers = currentUsers.map(user => 
-      user.id === updatedUser.id ? updatedUser : user
-    );
-    updateYearlyData(currentYear, updatedCurrentUsers);
+    // Update will be handled by realtime subscriptions
   };
 
-  const updateUser = (updatedUser: User) => {
-    // Update in yearly data across all years
-    const yearlyData: YearlyData[] = JSON.parse(localStorage.getItem('yearlyData') || '[]');
-    const updatedYearlyData = yearlyData.map(data => ({
-      ...data,
-      users: data.users.map(user => user.id === updatedUser.id ? updatedUser : user)
-    }));
-    localStorage.setItem('yearlyData', JSON.stringify(updatedYearlyData));
+  const updateUser = async (updatedUser: User) => {
+    try {
+      await supabase
+        .from('profiles')
+        .update({
+          full_name: updatedUser.fullName,
+          phone_number: updatedUser.mobileNo,
+          email: updatedUser.email,
+          status: updatedUser.status,
+          payment_date: updatedUser.paymentDate,
+          payment_amount: updatedUser.paymentAmount,
+        })
+        .eq('id', updatedUser.id);
 
-    // Update current users if it's the current year
-    if (updatedUser.registrationYear === currentYear) {
-      const users = getCurrentYearUsers();
-      const updatedUsers = users.map(user => user.id === updatedUser.id ? updatedUser : user);
-      localStorage.setItem('users', JSON.stringify(updatedUsers));
-    }
-
-    // Update current user if it's the same user
-    if (currentUser && currentUser.id === updatedUser.id) {
-      setCurrentUser(updatedUser);
-      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+      // Reload if it's current user
+      if (currentUser?.id === updatedUser.id) {
+        await loadUserProfile(updatedUser.id);
+      }
+    } catch (error) {
+      console.error('Error updating user:', error);
     }
   };
 
   const submitPayment = async (amount: number, remarks: string): Promise<boolean> => {
-    if (!currentUser) return false;
+    if (!authUser) return false;
     
     try {
-      const updatedUser = {
-        ...currentUser,
-        paymentSubmission: {
-          submitted: true,
-          submissionDate: new Date().toISOString(),
-          approvalStatus: 'pending' as const,
-          userRemarks: remarks,
-          amount: amount
-        }
-      };
-      
-      updateCurrentUser(updatedUser);
-      console.log('Payment submitted successfully:', updatedUser.paymentSubmission);
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          payment_amount: amount,
+          payment_date: new Date().toISOString(),
+        })
+        .eq('id', authUser.id);
+
+      if (error) throw error;
+
+      // Reload profile
+      await loadUserProfile(authUser.id);
       return true;
     } catch (error) {
       console.error('Payment submission error:', error);
@@ -358,6 +483,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <AuthContext.Provider value={{
       currentUser,
+      authUser,
+      session,
       isAdmin,
       isMasterAdmin,
       currentYear,
@@ -374,6 +501,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updateCurrentUser,
       submitPayment,
       updateUser,
+      loading,
     }}>
       {children}
     </AuthContext.Provider>
