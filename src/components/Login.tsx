@@ -59,7 +59,7 @@ const Login: React.FC<LoginProps> = ({ onSwitchToRegister }) => {
             <div>
               <Input
                 type="text"
-                placeholder="Email/Phone Number"
+                placeholder="Username or Email"
                 value={credentials.emailPhone}
                 onChange={(e) => setCredentials({ ...credentials, emailPhone: e.target.value })}
                 required
@@ -78,6 +78,13 @@ const Login: React.FC<LoginProps> = ({ onSwitchToRegister }) => {
               {loading ? 'Signing In...' : 'Sign In'}
             </Button>
           </form>
+          
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm font-medium text-blue-900 mb-1">Master Admin Login:</p>
+            <p className="text-xs text-blue-700">Username: <strong>admin</strong></p>
+            <p className="text-xs text-blue-700">Password: <strong>admin123</strong></p>
+          </div>
+
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
               Don't have an account?{' '}

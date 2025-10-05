@@ -82,8 +82,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Load available years
     loadYears();
 
+    // Create master admin on first load if it doesn't exist
+    createMasterAdminIfNeeded();
+
     return () => subscription.unsubscribe();
   }, []);
+
+  const createMasterAdminIfNeeded = async () => {
+    try {
+      // Check if any users exist
+      const { count } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true });
+
+      // If no users exist, create master admin
+      if (count === 0) {
+        console.log('No users found. Creating master admin...');
+        const { error } = await supabase.functions.invoke('create-master-admin');
+        if (!error) {
+          console.log('Master admin created successfully');
+        }
+      }
+    } catch (error) {
+      console.error('Error checking for master admin:', error);
+    }
+  };
 
   const loadUserProfile = async (userId: string) => {
     try {
@@ -205,9 +228,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      // Map "admin" username to admin email
+      const loginEmail = email.toLowerCase() === 'admin' ? 'admin@example.com' : email;
+      
       // Try standard login
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: loginEmail,
         password,
       });
 
