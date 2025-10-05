@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import { SetupMasterAdmin } from "./components/SetupMasterAdmin";
 
 const queryClient = new QueryClient();
 
@@ -19,6 +20,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/setup-admin" element={<SetupMasterAdmin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
