@@ -92,8 +92,8 @@ const CSVImport: React.FC<CSVImportProps> = ({ onImportComplete }) => {
                 title: 'Account Created via Import',
                 message: `Welcome ${fullName}! Your account has been created. Username: ${mobileNo}, Password: ${emiratesId}. Please login and update your credentials.`,
                 date: new Date().toISOString(),
-                read: false,
-                fromAdmin: 'System Import'
+                isRead: false,
+                sentBy: 'System Import'
               }],
             };
           });

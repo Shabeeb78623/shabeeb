@@ -160,7 +160,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           approvalStatus: profile.status === 'approved' ? 'approved' : 'pending'
         },
         benefitsUsed: benefits?.map(b => ({
-          type: b.benefit_type,
+          id: b.id,
+          type: b.benefit_type as 'hospital' | 'death' | 'gulf_returnee' | 'cancer',
           remarks: b.remarks || '',
           amountPaid: Number(b.amount_paid) || 0,
           date: b.used_date

@@ -51,10 +51,10 @@ const EnhancedMessageManager: React.FC<EnhancedMessageManagerProps> = ({ users, 
       // Transform the data to match our interface
       const transformedTemplates: MessageTemplate[] = (data || []).map(template => ({
         id: template.id,
-        template_name: template.template_name,
-        subject: template.subject,
-        message_content: template.message_content,
-        variables: Array.isArray(template.variables) ? template.variables as string[] : []
+        template_name: template.title,
+        subject: template.title,
+        message_content: template.content,
+        variables: []
       }));
       
       setTemplates(transformedTemplates);
@@ -130,8 +130,8 @@ const EnhancedMessageManager: React.FC<EnhancedMessageManagerProps> = ({ users, 
         title: personalizedSubject,
         message: personalizedMessage,
         date: new Date().toISOString(),
-        read: false,
-        fromAdmin: currentUser.fullName,
+        isRead: false,
+        sentBy: currentUser.fullName,
       };
 
       user.notifications.push(notification);

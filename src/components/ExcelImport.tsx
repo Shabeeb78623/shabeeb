@@ -130,8 +130,8 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImportComplete }) => {
                 title: 'Account Created!',
                 message: `Welcome ${normalizedRow.fullName || 'User'}! Your account has been created automatically. Username: ${mobileNo}, Password: ${emiratesId}. Please login and complete your profile.`,
                 date: new Date().toISOString(),
-                read: false,
-                fromAdmin: 'System Import'
+                isRead: false,
+                sentBy: 'System Import'
               }],
             };
           });

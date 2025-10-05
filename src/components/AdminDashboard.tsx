@@ -79,8 +79,8 @@ const AdminDashboard: React.FC = () => {
     return () => clearTimeout(loadTimer);
   }, [currentUser, currentYear]);
 
-  const loadUsers = () => {
-    const currentUsers = getCurrentYearUsers();
+  const loadUsers = async () => {
+    const currentUsers = await getCurrentYearUsers();
     setUsers(currentUsers);
   };
 
@@ -136,7 +136,7 @@ const AdminDashboard: React.FC = () => {
       filteredUsers = filteredUsers.filter(user => user.mandalam === currentUser.mandalamAccess);
     } else if (currentUser?.role === 'custom_admin' && currentUser.customPermissions?.mandalamAccess) {
       filteredUsers = filteredUsers.filter(user => 
-        currentUser.customPermissions!.mandalamAccess!.includes(user.mandalam)
+        currentUser.customPermissions!.mandalamAccess!.includes(user.mandalam as any)
       );
     }
     

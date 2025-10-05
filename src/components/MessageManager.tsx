@@ -117,8 +117,8 @@ const MessageManager: React.FC<MessageManagerProps> = ({ users, currentUser }) =
         title: personalizedSubject,
         message: personalizedMessage,
         date: new Date().toISOString(),
-        read: false,
-        fromAdmin: currentUser.fullName,
+        isRead: false,
+        sentBy: currentUser.fullName,
       };
 
       user.notifications.push(notification);

@@ -62,8 +62,8 @@ const NotificationManager: React.FC<NotificationManagerProps> = ({
       title: title.trim(),
       message: message.trim(),
       date: new Date().toISOString(),
-      read: false,
-      fromAdmin: currentAdminName
+      isRead: false,
+      sentBy: currentAdminName
     };
 
     targetUsers.forEach(user => {
