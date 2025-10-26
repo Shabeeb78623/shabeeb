@@ -224,8 +224,7 @@ const AdminDashboard: React.FC = () => {
         () => {
           const updatedUser = { 
             ...user, 
-            status: 'approved' as const,
-            approvalDate: new Date().toISOString()
+            status: 'approved' as const
           };
           updateUser(updatedUser);
           toast({
