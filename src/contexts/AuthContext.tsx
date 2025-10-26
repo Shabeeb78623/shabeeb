@@ -287,18 +287,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Emirates ID must be exactly 15 digits');
       }
 
-      // Check if user already exists - fixed the query
-      const { data: existingProfiles, error: checkError } = await supabase
+      // Check if user already exists
+      const { data: emailCheck } = await supabase
         .from('profiles')
         .select('id')
-        .or(`email.eq.${userData.email},phone_number.eq.${userData.mobileNo},emirates_id.eq.${userData.emiratesId}`);
+        .eq('email', userData.email)
+        .maybeSingle();
 
-      if (checkError) {
-        console.error('Error checking existing profiles:', checkError);
+      const { data: phoneCheck } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('phone_number', userData.mobileNo)
+        .maybeSingle();
+
+      const { data: emiratesCheck } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('emirates_id', userData.emiratesId)
+        .maybeSingle();
+
+      if (emailCheck) {
+        throw new Error('User with this email already exists');
       }
 
-      if (existingProfiles && existingProfiles.length > 0) {
-        throw new Error('User with this email, phone number, or Emirates ID already exists');
+      if (phoneCheck) {
+        throw new Error('User with this phone number already exists');
+      }
+
+      if (emiratesCheck) {
+        throw new Error('User with this Emirates ID already exists');
       }
 
       // Create auth user
