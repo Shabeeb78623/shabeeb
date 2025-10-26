@@ -109,6 +109,15 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
       return;
     }
 
+    if (formData.password.length < 6) {
+      toast({
+        title: "Weak Password",
+        description: "Password must be at least 6 characters long.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -116,20 +125,20 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
       if (success) {
         toast({
           title: "Registration Successful",
-          description: "Your account has been created and is pending approval. You can upload your profile photo and prepare for payment.",
+          description: "Your account has been created and is pending approval.",
         });
         onSwitchToLogin();
       } else {
         toast({
           title: "Registration Failed",
-          description: "User with this email, phone number, or Emirates ID already exists.",
+          description: "Unable to create account. Please try again.",
           variant: "destructive",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
-        title: "Error",
-        description: "An unexpected error occurred.",
+        title: "Registration Failed",
+        description: error.message || "An unexpected error occurred.",
         variant: "destructive",
       });
     } finally {
@@ -321,9 +330,10 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
             <div className="relative">
               <Input
                 type={showPassword ? "text" : "password"}
-                placeholder="Password *"
+                placeholder="Password (minimum 6 characters) *"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                minLength={6}
                 required
               />
               <button
