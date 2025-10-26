@@ -522,7 +522,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateUser = async (updatedUser: User) => {
     try {
-      await supabase
+      const { error } = await supabase
         .from('profiles')
         .update({
           full_name: updatedUser.fullName,
@@ -534,12 +534,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         })
         .eq('id', updatedUser.id);
 
+      if (error) {
+        console.error('Error updating user:', error);
+        throw error;
+      }
+
       // Reload if it's current user
       if (currentUser?.id === updatedUser.id) {
         await loadUserProfile(updatedUser.id);
       }
     } catch (error) {
       console.error('Error updating user:', error);
+      throw error;
     }
   };
 
