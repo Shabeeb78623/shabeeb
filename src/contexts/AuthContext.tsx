@@ -85,7 +85,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Create master admin on first load if it doesn't exist
     createMasterAdminIfNeeded();
 
-    return () => subscription.unsubscribe();
+    // Set up realtime subscription for profile changes
+    const profileChannel = supabase
+      .channel('profile-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profiles'
+        },
+        () => {
+          // Reload current user data when any profile changes
+          if (authUser?.id) {
+            setTimeout(() => loadUserProfile(authUser.id), 100);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+      supabase.removeChannel(profileChannel);
+    };
   }, []);
 
   const createMasterAdminIfNeeded = async () => {
@@ -265,15 +287,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Emirates ID must be exactly 15 digits');
       }
 
-      // Check if user already exists
-      const { data: existingProfiles } = await supabase
+      // Check if user already exists - fixed the query
+      const { data: existingProfiles, error: checkError } = await supabase
         .from('profiles')
         .select('id')
-        .or(`email.eq.${userData.email},phone_number.eq.${userData.mobileNo},emirates_id.eq.${userData.emiratesId}`)
-        .limit(1);
+        .or(`email.eq.${userData.email},phone_number.eq.${userData.mobileNo},emirates_id.eq.${userData.emiratesId}`);
+
+      if (checkError) {
+        console.error('Error checking existing profiles:', checkError);
+      }
 
       if (existingProfiles && existingProfiles.length > 0) {
-        return false;
+        throw new Error('User with this email, phone number, or Emirates ID already exists');
       }
 
       // Create auth user
@@ -405,14 +430,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const getCurrentYearUsers = async (): Promise<User[]> => {
     try {
-      const { data: profiles, error } = await supabase
+      // Get profiles and their roles
+      const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
         .eq('registration_year', currentYear);
 
-      if (error) throw error;
+      if (profilesError) throw profilesError;
 
-      return profiles?.map(p => ({
+      // Get all user roles
+      const { data: userRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role');
+
+      if (rolesError) throw rolesError;
+
+      // Create a map of user roles
+      const rolesMap = new Map(userRoles?.map(r => [r.user_id, r.role]) || []);
+
+      // Filter out master_admin accounts
+      const regularProfiles = profiles?.filter(p => {
+        const role = rolesMap.get(p.id);
+        return role !== 'master_admin';
+      }) || [];
+
+      return regularProfiles?.map(p => ({
         id: p.id,
         regNo: `${p.registration_year}${p.id.substring(0, 4)}`,
         fullName: p.full_name,

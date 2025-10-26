@@ -55,23 +55,26 @@ const UsersOverview: React.FC<UsersOverviewProps> = ({ users }) => {
   const filteredUsers = getFilteredUsers();
 
   // Calculate statistics
+  // Filter out master_admin from regular users list
+  const regularUsers = filteredUsers.filter(user => user.role !== 'master_admin');
+
   const stats = {
-    total: filteredUsers.length,
-    byMandalam: filteredUsers.reduce((acc, user) => {
+    total: regularUsers.length,
+    byMandalam: regularUsers.reduce((acc, user) => {
       acc[user.mandalam] = (acc[user.mandalam] || 0) + 1;
       return acc;
     }, {} as Record<string, number>),
-    byStatus: filteredUsers.reduce((acc, user) => {
+    byStatus: regularUsers.reduce((acc, user) => {
       acc[user.status] = (acc[user.status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>),
-    byRole: filteredUsers.reduce((acc, user) => {
+    byRole: regularUsers.reduce((acc, user) => {
       acc[user.role] = (acc[user.role] || 0) + 1;
       return acc;
     }, {} as Record<string, number>),
     byPayment: {
-      paid: filteredUsers.filter(u => u.paymentStatus).length,
-      unpaid: filteredUsers.filter(u => !u.paymentStatus).length
+      paid: regularUsers.filter(u => u.paymentStatus).length,
+      unpaid: regularUsers.filter(u => !u.paymentStatus).length
     }
   };
 
@@ -158,7 +161,7 @@ const UsersOverview: React.FC<UsersOverviewProps> = ({ users }) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.map((user) => (
+              {regularUsers.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.regNo}</TableCell>
                   <TableCell>{user.fullName}</TableCell>

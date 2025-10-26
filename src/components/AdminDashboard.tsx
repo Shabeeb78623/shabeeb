@@ -25,6 +25,7 @@ import ExcelImport from './ExcelImport';
 import EnhancedMessageManager from './EnhancedMessageManager';
 import * as XLSX from 'xlsx';
 import { Search } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const AdminDashboard: React.FC = () => {
   const { logout, isMasterAdmin, currentUser, currentYear, availableYears, switchYear, getCurrentYearUsers } = useAuth();
@@ -43,35 +44,6 @@ const AdminDashboard: React.FC = () => {
         loadUsers();
         setLoading(false);
       } else {
-        // Create a default admin for testing if no current user
-        const defaultAdmin: User = {
-          id: 'admin-1',
-          regNo: 'ADM001',
-          fullName: 'System Administrator',
-          email: 'admin@example.com',
-          mobileNo: '+971501234567',
-          whatsApp: '+971501234567',
-          emiratesId: '784-0000-0000000-0',
-          emirate: 'Dubai',
-          mandalam: 'BALUSHERI', // Fixed: Use valid mandalam value
-          nominee: 'System Admin',
-          relation: 'Father', // Fixed: Use valid relation value
-          addressUAE: 'Dubai, UAE',
-          addressIndia: 'India',
-          kmccMember: false,
-          pratheekshaMember: false,
-          recommendedBy: 'System',
-          status: 'approved',
-          role: 'master_admin',
-          registrationDate: new Date().toISOString(),
-          registrationYear: currentYear,
-          paymentStatus: true,
-          benefitsUsed: [],
-          notifications: [],
-          isReregistration: false
-        };
-        localStorage.setItem('currentUser', JSON.stringify(defaultAdmin));
-        loadUsers();
         setLoading(false);
       }
     }, 500);
@@ -83,6 +55,29 @@ const AdminDashboard: React.FC = () => {
     const currentUsers = await getCurrentYearUsers();
     setUsers(currentUsers);
   };
+
+  // Setup realtime subscription for user changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-users-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profiles'
+        },
+        () => {
+          // Reload users when any profile changes
+          loadUsers();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentYear]);
 
   const updateUser = (updatedUser: User) => {
     const updatedUsers = users.map(user => 
