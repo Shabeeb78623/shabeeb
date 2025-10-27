@@ -56,10 +56,10 @@ const AdminDashboard: React.FC = () => {
     setUsers(currentUsers);
   };
 
-  // Setup realtime subscription for user changes
+  // Setup realtime subscriptions for all data changes
   useEffect(() => {
-    const channel = supabase
-      .channel('admin-users-changes')
+    const profilesChannel = supabase
+      .channel('admin-profiles-changes')
       .on(
         'postgres_changes',
         {
@@ -67,15 +67,49 @@ const AdminDashboard: React.FC = () => {
           schema: 'public',
           table: 'profiles'
         },
+        (payload) => {
+          console.log('Profile changed:', payload);
+          loadUsers();
+        }
+      )
+      .subscribe();
+
+    const notificationsChannel = supabase
+      .channel('admin-notifications-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications'
+        },
         () => {
-          // Reload users when any profile changes
+          console.log('Notification changed');
+          loadUsers();
+        }
+      )
+      .subscribe();
+
+    const benefitsChannel = supabase
+      .channel('admin-benefits-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_benefits'
+        },
+        () => {
+          console.log('Benefit changed');
           loadUsers();
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(profilesChannel);
+      supabase.removeChannel(notificationsChannel);
+      supabase.removeChannel(benefitsChannel);
     };
   }, [currentYear]);
 
@@ -208,7 +242,7 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const approveUser = (userId: string) => {
+  const approveUser = async (userId: string) => {
     if (!hasPermission('canApproveUsers')) {
       toast({
         title: "Access Denied",
@@ -221,16 +255,30 @@ const AdminDashboard: React.FC = () => {
     const user = users.find(u => u.id === userId);
     if (user) {
       confirmAndExecute(
-        () => {
-          const updatedUser = { 
-            ...user, 
-            status: 'approved' as const
-          };
-          updateUser(updatedUser);
-          toast({
-            title: "User Approved",
-            description: `${user.fullName} has been approved.`,
-          });
+        async () => {
+          try {
+            const { error } = await supabase
+              .from('profiles')
+              .update({ status: 'approved' })
+              .eq('id', userId);
+
+            if (error) throw error;
+
+            toast({
+              title: "User Approved",
+              description: `${user.fullName} has been approved.`,
+            });
+            
+            // Reload users to reflect changes
+            await loadUsers();
+          } catch (error) {
+            console.error('Error approving user:', error);
+            toast({
+              title: "Error",
+              description: "Failed to approve user. Please try again.",
+              variant: "destructive"
+            });
+          }
         },
         "Approve User",
         `Are you sure you want to approve ${user.fullName}?`

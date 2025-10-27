@@ -85,9 +85,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Create master admin on first load if it doesn't exist
     createMasterAdminIfNeeded();
 
-    // Set up realtime subscription for profile changes
+    // Set up realtime subscriptions for all user-related changes
     const profileChannel = supabase
-      .channel('profile-changes')
+      .channel('user-profile-changes')
       .on(
         'postgres_changes',
         {
@@ -95,8 +95,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           schema: 'public',
           table: 'profiles'
         },
-        () => {
+        (payload) => {
+          console.log('Profile updated:', payload);
           // Reload current user data when any profile changes
+          if (authUser?.id) {
+            setTimeout(() => loadUserProfile(authUser.id), 100);
+          }
+        }
+      )
+      .subscribe();
+
+    const notificationsChannel = supabase
+      .channel('user-notifications-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${authUser?.id}`
+        },
+        () => {
+          console.log('Notifications updated');
+          if (authUser?.id) {
+            setTimeout(() => loadUserProfile(authUser.id), 100);
+          }
+        }
+      )
+      .subscribe();
+
+    const benefitsChannel = supabase
+      .channel('user-benefits-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_benefits',
+          filter: `user_id=eq.${authUser?.id}`
+        },
+        () => {
+          console.log('Benefits updated');
           if (authUser?.id) {
             setTimeout(() => loadUserProfile(authUser.id), 100);
           }
@@ -107,8 +146,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       subscription.unsubscribe();
       supabase.removeChannel(profileChannel);
+      supabase.removeChannel(notificationsChannel);
+      supabase.removeChannel(benefitsChannel);
     };
-  }, []);
+  }, [authUser?.id]);
 
   const createMasterAdminIfNeeded = async () => {
     try {
