@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Search } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CustomAdminManagerProps {
   users: User[];
@@ -52,75 +53,124 @@ const CustomAdminManager: React.FC<CustomAdminManagerProps> = ({ users, onUpdate
     )
   );
 
-  const assignCustomAdmin = () => {
+  const assignCustomAdmin = async () => {
     if (!selectedUser) return;
 
-    const updatedUser = {
-      ...selectedUser,
-      role: 'custom_admin' as const,
-      customPermissions: {
-        ...permissions,
-        mandalamAccess: permissions.mandalamAccess
-      }
-    };
+    try {
+      // Update or insert user role
+      const { error } = await supabase
+        .from('user_roles')
+        .upsert({
+          user_id: selectedUser.id,
+          role: 'mandalam_admin',
+          mandalam_access: permissions.mandalamAccess.join(',')
+        });
 
-    onUpdateUser(updatedUser);
-    toast({
-      title: "Custom Admin Assigned",
-      description: `${selectedUser.fullName} has been assigned custom admin permissions.`,
-    });
+      if (error) throw error;
 
-    setSelectedUser(null);
-    resetPermissions();
-  };
-
-  const removeAdminRole = (userId: string, newRole: 'user' | 'admin' | 'mandalam_admin' = 'user') => {
-    const user = users.find(u => u.id === userId);
-    if (user) {
-      const updatedUser = {
-        ...user,
-        role: newRole,
-        customPermissions: undefined,
-        mandalamAccess: newRole === 'mandalam_admin' ? user.mandalamAccess : undefined
-      };
-      onUpdateUser(updatedUser);
       toast({
-        title: "Role Updated",
-        description: `${user.fullName}'s role has been updated to ${newRole}.`,
+        title: "Admin Role Assigned",
+        description: `${selectedUser.fullName} has been assigned admin permissions.`,
+      });
+
+      setSelectedUser(null);
+      resetPermissions();
+    } catch (error) {
+      console.error('Error assigning admin role:', error);
+      toast({
+        title: "Error",
+        description: "Failed to assign admin role. Please try again.",
+        variant: "destructive"
       });
     }
   };
 
-  const assignMandalamAdmin = (userId: string, mandalam: string) => {
+  const removeAdminRole = async (userId: string) => {
     const user = users.find(u => u.id === userId);
-    if (user) {
-      const updatedUser = {
-        ...user,
-        role: 'mandalam_admin' as const,
-        mandalamAccess: mandalam as any,
-        customPermissions: undefined
-      };
-      onUpdateUser(updatedUser);
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('user_roles')
+        .update({ role: 'user', mandalam_access: null })
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Admin Role Removed",
+        description: `${user.fullName} is now a regular user.`,
+      });
+    } catch (error) {
+      console.error('Error removing admin role:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove admin role. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const assignMandalamAdmin = async (userId: string, mandalam: string) => {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('user_roles')
+        .upsert({
+          user_id: userId,
+          role: 'mandalam_admin',
+          mandalam_access: mandalam
+        });
+
+      if (error) throw error;
+
       toast({
         title: "Mandalam Admin Assigned",
         description: `${user.fullName} is now admin for ${mandalam} mandalam.`,
       });
+    } catch (error) {
+      console.error('Error assigning mandalam admin:', error);
+      toast({
+        title: "Error",
+        description: "Failed to assign mandalam admin. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
-  const toggleAllAccessAdmin = (userId: string) => {
+  const toggleAllAccessAdmin = async (userId: string) => {
     const user = users.find(u => u.id === userId);
-    if (user) {
-      const updatedUser = {
-        ...user,
-        role: user.role === 'admin' ? 'user' as const : 'admin' as const,
-        customPermissions: undefined,
-        mandalamAccess: undefined
-      };
-      onUpdateUser(updatedUser);
+    if (!user) return;
+
+    try {
+      // Check current role
+      const { data: currentRole } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .single();
+
+      const newRole = currentRole?.role === 'mandalam_admin' ? 'user' : 'mandalam_admin';
+
+      const { error } = await supabase
+        .from('user_roles')
+        .update({ role: newRole, mandalam_access: null })
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
       toast({
         title: "Role Updated",
-        description: `${user.fullName} is now ${updatedUser.role === 'admin' ? 'an all access admin' : 'a user'}.`,
+        description: `${user.fullName} is now ${newRole === 'mandalam_admin' ? 'an admin' : 'a user'}.`,
+      });
+    } catch (error) {
+      console.error('Error toggling admin role:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update role. Please try again.",
+        variant: "destructive"
       });
     }
   };

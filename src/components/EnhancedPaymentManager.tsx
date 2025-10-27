@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { Search, DollarSign, Users, TrendingUp } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const paymentRecipients = [
   { id: '1', name: 'John Doe', contact: '+971501234567' },
@@ -51,25 +52,37 @@ const EnhancedPaymentManager: React.FC<EnhancedPaymentManagerProps> = ({ users, 
     return matchesSearch && matchesStatus && matchesMandalam && matchesPaidTo;
   });
 
-  const handleMarkAsPaid = (recipientName: string, amount: number) => {
+  const handleMarkAsPaid = async (recipientName: string, amount: number) => {
     if (!selectedUser) return;
 
-    const updatedUser = {
-      ...selectedUser,
-      paymentStatus: true,
-      paymentAmount: amount,
-      paymentRemarks: recipientName,
-    };
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          status: 'approved',
+          payment_amount: amount,
+          payment_date: new Date().toISOString()
+        })
+        .eq('id', selectedUser.id);
 
-    onUpdateUser(updatedUser);
-    setSelectedUser(null);
-    setSelectedRecipient('');
-    setPaidAmount('');
+      if (error) throw error;
 
-    toast({
-      title: "Payment Updated",
-      description: `Payment marked as paid to ${recipientName}`,
-    });
+      toast({
+        title: "Payment Approved",
+        description: `${selectedUser.fullName}'s payment has been approved`,
+      });
+
+      setSelectedUser(null);
+      setSelectedRecipient('');
+      setPaidAmount('');
+    } catch (error) {
+      console.error('Error approving payment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to approve payment. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const totalPaid = filteredUsers.filter(u => u.paymentStatus).reduce((sum, u) => sum + (u.paymentAmount || 0), 0);

@@ -143,11 +143,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       )
       .subscribe();
 
+    const rolesChannel = supabase
+      .channel('user-roles-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_roles',
+          filter: `user_id=eq.${authUser?.id}`
+        },
+        () => {
+          console.log('User role changed');
+          if (authUser?.id) {
+            setTimeout(() => loadUserProfile(authUser.id), 100);
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
       subscription.unsubscribe();
       supabase.removeChannel(profileChannel);
       supabase.removeChannel(notificationsChannel);
       supabase.removeChannel(benefitsChannel);
+      supabase.removeChannel(rolesChannel);
     };
   }, [authUser?.id]);
 
@@ -499,57 +519,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Get all user roles
       const { data: userRoles, error: rolesError } = await supabase
         .from('user_roles')
-        .select('user_id, role');
+        .select('user_id, role, mandalam_access');
 
       if (rolesError) throw rolesError;
 
       // Create a map of user roles
-      const rolesMap = new Map(userRoles?.map(r => [r.user_id, r.role]) || []);
+      const rolesMap = new Map(userRoles?.map(r => [r.user_id, { role: r.role, mandalamAccess: r.mandalam_access }]) || []);
 
       // Filter out master_admin accounts
       const regularProfiles = profiles?.filter(p => {
-        const role = rolesMap.get(p.id);
-        return role !== 'master_admin';
+        const roleData = rolesMap.get(p.id);
+        return roleData?.role !== 'master_admin';
       }) || [];
 
-      return regularProfiles?.map(p => ({
-        id: p.id,
-        regNo: `${p.registration_year}${p.id.substring(0, 4)}`,
-        fullName: p.full_name,
-        mobileNo: p.phone_number,
-        whatsApp: p.phone_number,
-        nominee: '',
-        relation: '',
-        emirate: p.emirate,
-        mandalam: p.mandalam,
-        email: p.email || '',
-        addressUAE: '',
-        addressIndia: '',
-        kmccMember: false,
-        kmccMembershipNumber: '',
-        pratheekshaMember: false,
-        pratheekshaMembershipNumber: '',
-        recommendedBy: '',
-        photo: p.profile_photo_url || '',
-        emiratesId: p.emirates_id || '',
-        password: '',
-        isImported: false,
-        status: p.status || 'pending',
-        role: 'user',
-        registrationDate: p.created_at,
-        registrationYear: p.registration_year,
-        isReregistration: false,
-        paymentStatus: !!p.payment_date,
-        paymentAmount: Number(p.payment_amount) || 0,
-        paymentRemarks: '',
-        paymentDate: p.payment_date,
-        paymentSubmission: {
-          submitted: !!p.payment_date,
-          approvalStatus: p.status === 'approved' ? 'approved' : 'pending'
-        },
-        benefitsUsed: [],
-        notifications: [],
-      })) || [];
+      return regularProfiles?.map(p => {
+        const roleData = rolesMap.get(p.id);
+        const role = roleData?.role || 'user';
+        const mandalamAccess = roleData?.mandalamAccess || '';
+        return {
+          id: p.id,
+          regNo: `${p.registration_year}${p.id.substring(0, 4)}`,
+          fullName: p.full_name,
+          mobileNo: p.phone_number,
+          whatsApp: p.phone_number,
+          nominee: '',
+          relation: '',
+          emirate: p.emirate,
+          mandalam: p.mandalam,
+          email: p.email || '',
+          addressUAE: '',
+          addressIndia: '',
+          kmccMember: false,
+          kmccMembershipNumber: '',
+          pratheekshaMember: false,
+          pratheekshaMembershipNumber: '',
+          recommendedBy: '',
+          photo: p.profile_photo_url || '',
+          emiratesId: p.emirates_id || '',
+          password: '',
+          isImported: false,
+          status: p.status || 'pending',
+          role: role,
+          mandalamAccess: mandalamAccess,
+          registrationDate: p.created_at,
+          registrationYear: p.registration_year,
+          isReregistration: false,
+          paymentStatus: !!p.payment_date,
+          paymentAmount: Number(p.payment_amount) || 0,
+          paymentRemarks: '',
+          paymentDate: p.payment_date,
+          paymentSubmission: {
+            submitted: !!p.payment_date,
+            approvalStatus: p.status === 'approved' ? 'approved' : 'pending'
+          },
+          benefitsUsed: [],
+          notifications: [],
+        };
+      }) || [];
     } catch (error) {
       console.error('Error loading users:', error);
       return [];

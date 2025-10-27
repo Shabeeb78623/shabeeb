@@ -106,44 +106,78 @@ const AdminDashboard: React.FC = () => {
       )
       .subscribe();
 
+    const rolesChannel = supabase
+      .channel('admin-roles-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_roles'
+        },
+        () => {
+          console.log('Role changed');
+          loadUsers();
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(profilesChannel);
       supabase.removeChannel(notificationsChannel);
       supabase.removeChannel(benefitsChannel);
+      supabase.removeChannel(rolesChannel);
     };
   }, [currentYear]);
 
-  const updateUser = (updatedUser: User) => {
-    const updatedUsers = users.map(user => 
-      user.id === updatedUser.id ? updatedUser : user
-    );
-    setUsers(updatedUsers);
-    
-    // Update yearly data
-    const yearlyData = JSON.parse(localStorage.getItem('yearlyData') || '[]');
-    const updatedYearlyData = yearlyData.map((data: any) => 
-      data.year === currentYear ? { ...data, users: updatedUsers } : data
-    );
-    localStorage.setItem('yearlyData', JSON.stringify(updatedYearlyData));
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
+  const updateUser = async (updatedUser: User) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: updatedUser.fullName,
+          phone_number: updatedUser.mobileNo,
+          email: updatedUser.email,
+          status: updatedUser.status,
+          payment_date: updatedUser.paymentDate,
+          payment_amount: updatedUser.paymentAmount,
+        })
+        .eq('id', updatedUser.id);
+
+      if (error) throw error;
+
+      // Real-time will trigger reload
+    } catch (error) {
+      console.error('Error updating user:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update user. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const deleteUser = (userId: string) => {
-    const updatedUsers = users.filter(user => user.id !== userId);
-    setUsers(updatedUsers);
-    
-    // Update yearly data
-    const yearlyData = JSON.parse(localStorage.getItem('yearlyData') || '[]');
-    const updatedYearlyData = yearlyData.map((data: any) => 
-      data.year === currentYear ? { ...data, users: updatedUsers } : data
-    );
-    localStorage.setItem('yearlyData', JSON.stringify(updatedYearlyData));
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-    
-    toast({
-      title: "User Deleted",
-      description: "User has been permanently deleted.",
-    });
+  const deleteUser = async (userId: string) => {
+    try {
+      // Delete from auth.users (will cascade to profiles and user_roles)
+      const { error } = await supabase.auth.admin.deleteUser(userId);
+
+      if (error) throw error;
+
+      toast({
+        title: "User Deleted",
+        description: "User has been permanently deleted.",
+      });
+
+      // Real-time will trigger reload
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete user. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const hasPermission = (permission: keyof NonNullable<User['customPermissions']>): boolean => {
