@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Bell } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NotificationManagerProps {
   users: User[];
@@ -46,7 +47,7 @@ const NotificationManager: React.FC<NotificationManagerProps> = ({
     return targetUsers;
   };
 
-  const sendNotification = () => {
+  const sendNotification = async () => {
     if (!title.trim() || !message.trim()) {
       toast({
         title: "Error",
@@ -57,34 +58,51 @@ const NotificationManager: React.FC<NotificationManagerProps> = ({
     }
 
     const targetUsers = getTargetUsers();
-    const notification = {
-      id: Date.now().toString(),
-      title: title.trim(),
-      message: message.trim(),
-      date: new Date().toISOString(),
-      isRead: false,
-      sentBy: currentAdminName
-    };
+    
+    if (targetUsers.length === 0) {
+      toast({
+        title: "Error",
+        description: "No users selected to send notification.",
+        variant: "destructive"
+      });
+      return;
+    }
 
-    targetUsers.forEach(user => {
-      const updatedUser = {
-        ...user,
-        notifications: [...(user.notifications || []), notification]
-      };
-      onUpdateUser(updatedUser);
-    });
+    try {
+      // Insert notifications for all target users
+      const notifications = targetUsers.map(user => ({
+        user_id: user.id,
+        title: title.trim(),
+        message: message.trim(),
+        sent_by: currentAdminName,
+        is_read: false
+      }));
 
-    toast({
-      title: "Notification Sent",
-      description: `Notification sent to ${targetUsers.length} users.`,
-    });
+      const { error } = await supabase
+        .from('notifications')
+        .insert(notifications);
 
-    // Reset form
-    setTitle('');
-    setMessage('');
-    setTargetMandalam('all');
-    setTargetStatus('all');
-    setSelectedUsers([]);
+      if (error) throw error;
+
+      toast({
+        title: "Notification Sent",
+        description: `Notification sent to ${targetUsers.length} users.`,
+      });
+
+      // Reset form
+      setTitle('');
+      setMessage('');
+      setTargetMandalam('all');
+      setTargetStatus('all');
+      setSelectedUsers([]);
+    } catch (error) {
+      console.error('Error sending notification:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send notification. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const targetUsers = getTargetUsers();

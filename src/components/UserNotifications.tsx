@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Bell, Eye, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface UserNotificationsProps {
   user: User;
@@ -15,6 +17,7 @@ interface UserNotificationsProps {
 
 const UserNotifications: React.FC<UserNotificationsProps> = ({ user, onUpdateUser }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const { toast } = useToast();
 
   const filteredNotifications = user.notifications.filter(notification =>
     notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -22,24 +25,62 @@ const UserNotifications: React.FC<UserNotificationsProps> = ({ user, onUpdateUse
     notification.fromAdmin.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const markAsRead = (notificationId: string) => {
-    const updatedUser = {
-      ...user,
-      notifications: user.notifications.map(notification =>
-        notification.id === notificationId
-          ? { ...notification, read: true }
-          : notification
-      )
-    };
-    onUpdateUser(updatedUser);
+  const markAsRead = async (notificationId: string) => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('id', notificationId);
+
+      if (error) throw error;
+
+      const updatedUser = {
+        ...user,
+        notifications: user.notifications.map(notification =>
+          notification.id === notificationId
+            ? { ...notification, read: true }
+            : notification
+        )
+      };
+      onUpdateUser(updatedUser);
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      toast({
+        title: "Error",
+        description: "Failed to mark notification as read.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const markAllAsRead = () => {
-    const updatedUser = {
-      ...user,
-      notifications: user.notifications.map(notification => ({ ...notification, read: true }))
-    };
-    onUpdateUser(updatedUser);
+  const markAllAsRead = async () => {
+    try {
+      const unreadNotificationIds = user.notifications
+        .filter(n => !n.read)
+        .map(n => n.id);
+
+      if (unreadNotificationIds.length === 0) return;
+
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .in('id', unreadNotificationIds);
+
+      if (error) throw error;
+
+      const updatedUser = {
+        ...user,
+        notifications: user.notifications.map(notification => ({ ...notification, read: true }))
+      };
+      onUpdateUser(updatedUser);
+    } catch (error) {
+      console.error('Error marking all as read:', error);
+      toast({
+        title: "Error",
+        description: "Failed to mark all notifications as read.",
+        variant: "destructive"
+      });
+    }
   };
 
   const unreadCount = user.notifications.filter(n => !n.read).length;

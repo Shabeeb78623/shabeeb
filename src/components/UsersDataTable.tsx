@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Search, Edit, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UsersDataTableProps {
   users: User[];
@@ -80,14 +81,36 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({
     return acc;
   }, {} as Record<string, number>);
 
-  const saveUserEdit = () => {
+  const saveUserEdit = async () => {
     if (editingUser) {
-      onUpdateUser(editingUser);
-      setEditingUser(null);
-      toast({
-        title: "User Updated",
-        description: "User information has been updated successfully.",
-      });
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            full_name: editingUser.fullName,
+            email: editingUser.email,
+            phone_number: editingUser.mobileNo,
+            emirates_id: editingUser.emiratesId,
+            emirate: editingUser.emirate
+          })
+          .eq('id', editingUser.id);
+
+        if (error) throw error;
+
+        onUpdateUser(editingUser);
+        setEditingUser(null);
+        toast({
+          title: "User Updated",
+          description: "User information has been updated successfully.",
+        });
+      } catch (error) {
+        console.error('Error updating user:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update user. Please try again.",
+          variant: "destructive"
+        });
+      }
     }
   };
 

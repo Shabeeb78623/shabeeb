@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Upload, Save } from 'lucide-react';
 import { compressImage } from '../utils/imageCompression';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UserProfileEditorProps {
   user: User;
@@ -85,6 +86,7 @@ const UserProfileEditor: React.FC<UserProfileEditorProps> = ({ user, onUpdateUse
           description: "Full name is required.",
           variant: "destructive"
         });
+        setSaving(false);
         return;
       }
 
@@ -94,6 +96,7 @@ const UserProfileEditor: React.FC<UserProfileEditorProps> = ({ user, onUpdateUse
           description: "Email is required.",
           variant: "destructive"
         });
+        setSaving(false);
         return;
       }
 
@@ -103,6 +106,7 @@ const UserProfileEditor: React.FC<UserProfileEditorProps> = ({ user, onUpdateUse
           description: "Mobile number is required.",
           variant: "destructive"
         });
+        setSaving(false);
         return;
       }
 
@@ -112,8 +116,25 @@ const UserProfileEditor: React.FC<UserProfileEditorProps> = ({ user, onUpdateUse
           description: "Emirates ID must be exactly 15 digits.",
           variant: "destructive"
         });
+        setSaving(false);
         return;
       }
+
+      // Update profile in Supabase
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: editedUser.fullName,
+          email: editedUser.email,
+          phone_number: editedUser.mobileNo,
+          emirates_id: editedUser.emiratesId,
+          emirate: editedUser.emirate,
+          mandalam: editedUser.mandalam,
+          profile_photo_url: editedUser.photo || null
+        })
+        .eq('id', editedUser.id);
+
+      if (error) throw error;
 
       onUpdateUser(editedUser);
       toast({
@@ -121,6 +142,7 @@ const UserProfileEditor: React.FC<UserProfileEditorProps> = ({ user, onUpdateUse
         description: "Your profile has been updated successfully.",
       });
     } catch (error) {
+      console.error('Error updating profile:', error);
       toast({
         title: "Error",
         description: "Failed to update profile. Please try again.",
