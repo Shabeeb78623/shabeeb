@@ -107,7 +107,7 @@ const EnhancedMessageManager: React.FC<EnhancedMessageManagerProps> = ({ users, 
     }
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     const filteredUsers = getFilteredUsers();
     
     if (filteredUsers.length === 0) {
@@ -119,35 +119,58 @@ const EnhancedMessageManager: React.FC<EnhancedMessageManagerProps> = ({ users, 
       return;
     }
 
-    // Simulate sending messages
-    filteredUsers.forEach(user => {
-      const personalizedMessage = replaceVariables(messageContent, user);
-      const personalizedSubject = replaceVariables(subject, user);
-      
-      // Add notification to user
-      const notification = {
-        id: Date.now().toString() + Math.random(),
-        title: personalizedSubject,
-        message: personalizedMessage,
-        date: new Date().toISOString(),
-        isRead: false,
-        sentBy: currentUser.fullName,
-      };
+    if (!subject.trim() || !messageContent.trim()) {
+      toast({
+        title: "Incomplete Message",
+        description: "Please provide both subject and message content.",
+        variant: "destructive"
+      });
+      return;
+    }
 
-      user.notifications.push(notification);
-    });
+    const targetUsers = selectedUsers.length > 0 
+      ? filteredUsers.filter(user => selectedUsers.includes(user.id))
+      : filteredUsers;
 
-    toast({
-      title: "Messages Sent",
-      description: `Message sent to ${filteredUsers.length} recipients.`,
-    });
+    try {
+      // Create notifications for all target users
+      const notifications = targetUsers.map(user => {
+        const personalizedMessage = replaceVariables(messageContent, user);
+        const personalizedSubject = replaceVariables(subject, user);
+        return {
+          user_id: user.id,
+          title: personalizedSubject,
+          message: personalizedMessage,
+          sent_by: currentUser.fullName,
+          is_read: false
+        };
+      });
 
-    // Reset form
-    setMessageContent('');
-    setSubject('');
-    setSelectedUsers([]);
-    setSendToUnpaid(false);
-    setSelectedTemplate(null);
+      const { error } = await supabase
+        .from('notifications')
+        .insert(notifications);
+
+      if (error) throw error;
+
+      toast({
+        title: "Messages Sent",
+        description: `Successfully sent ${targetUsers.length} personalized messages.`,
+      });
+
+      // Reset form
+      setSubject('');
+      setMessageContent('');
+      setSelectedUsers([]);
+      setSendToUnpaid(false);
+      setSelectedTemplate(null);
+    } catch (error) {
+      console.error('Error sending messages:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send messages. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const filteredUsers = getFilteredUsers();

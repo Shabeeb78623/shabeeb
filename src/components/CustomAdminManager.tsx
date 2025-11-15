@@ -54,29 +54,59 @@ const CustomAdminManager: React.FC<CustomAdminManagerProps> = ({ users, onUpdate
   );
 
   const assignCustomAdmin = async () => {
-    if (!selectedUser) return;
+    if (!selectedUser) {
+      toast({
+        title: "Error",
+        description: "Please select a user first",
+        variant: "destructive"
+      });
+      return;
+    }
 
     try {
-      // Update or insert user role
-      const { error } = await supabase
+      // First check if role exists
+      const { data: existingRole } = await supabase
         .from('user_roles')
-        .upsert({
-          user_id: selectedUser.id,
-          role: 'mandalam_admin',
-          mandalam_access: permissions.mandalamAccess.join(',')
-        });
+        .select('*')
+        .eq('user_id', selectedUser.id)
+        .single();
+
+      let error;
+      if (existingRole) {
+        // Update existing role
+        ({ error } = await supabase
+          .from('user_roles')
+          .update({
+            role: 'mandalam_admin',
+            mandalam_access: permissions.mandalamAccess.length > 0 
+              ? permissions.mandalamAccess.join(',') 
+              : null
+          })
+          .eq('user_id', selectedUser.id));
+      } else {
+        // Insert new role
+        ({ error } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: selectedUser.id,
+            role: 'mandalam_admin',
+            mandalam_access: permissions.mandalamAccess.length > 0 
+              ? permissions.mandalamAccess.join(',') 
+              : null
+          }));
+      }
 
       if (error) throw error;
 
       toast({
-        title: "Admin Role Assigned",
-        description: `${selectedUser.fullName} has been assigned admin permissions.`,
+        title: "Success",
+        description: `${selectedUser.fullName} has been assigned admin permissions`,
       });
 
       setSelectedUser(null);
       resetPermissions();
     } catch (error) {
-      console.error('Error assigning admin role:', error);
+      console.error('Error assigning admin:', error);
       toast({
         title: "Error",
         description: "Failed to assign admin role. Please try again.",

@@ -10,6 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { Calendar, Plus, Trash2, Users, AlertTriangle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NewYearManagerProps {
   users: User[];
@@ -135,32 +136,37 @@ const NewYearManager: React.FC<NewYearManagerProps> = ({
     }
   };
 
-  const handleDeleteYear = (year: number) => {
+  const handleDeleteYear = async (year: number) => {
+    if (year === currentYear) {
+      toast({
+        title: "Cannot Delete",
+        description: "Cannot delete the active year.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
-      if (year === currentYear) {
-        toast({
-          title: "Cannot Delete Active Year",
-          description: "Cannot delete the currently active year.",
-          variant: "destructive"
-        });
-        return;
-      }
+      // Delete year from database
+      const { error } = await supabase
+        .from('year_configs')
+        .delete()
+        .eq('year', year);
 
-      // Remove from yearly data
-      const yearlyData: YearlyData[] = JSON.parse(localStorage.getItem('yearlyData') || '[]');
-      const updatedYearlyData = yearlyData.filter(data => data.year !== year);
-      localStorage.setItem('yearlyData', JSON.stringify(updatedYearlyData));
+      if (error) throw error;
 
-      // Remove from available years
-      const updatedAvailableYears = availableYears.filter(y => y !== year);
-      localStorage.setItem('availableYears', JSON.stringify(updatedAvailableYears));
+      // Delete all profiles from that year
+      await supabase
+        .from('profiles')
+        .delete()
+        .eq('registration_year', year);
 
       toast({
         title: "Year Deleted",
-        description: `Year ${year} has been deleted successfully.`,
+        description: `Year ${year} and all associated data have been deleted.`,
       });
 
-      // Force re-render by updating state
+      // Reload page to reflect changes
       window.location.reload();
     } catch (error) {
       console.error('Error deleting year:', error);

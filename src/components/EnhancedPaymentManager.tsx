@@ -56,30 +56,31 @@ const EnhancedPaymentManager: React.FC<EnhancedPaymentManagerProps> = ({ users, 
     if (!selectedUser) return;
 
     try {
+      // Only update payment info, do NOT change status
       const { error } = await supabase
         .from('profiles')
         .update({
-          status: 'approved',
           payment_amount: amount,
-          payment_date: new Date().toISOString()
+          payment_date: new Date().toISOString(),
+          payment_transaction_id: recipientName
         })
         .eq('id', selectedUser.id);
 
       if (error) throw error;
 
       toast({
-        title: "Payment Approved",
-        description: `${selectedUser.fullName}'s payment has been approved`,
+        title: "Payment Recorded",
+        description: `Payment recorded for ${selectedUser.fullName}. Awaiting admin approval.`,
       });
 
       setSelectedUser(null);
       setSelectedRecipient('');
       setPaidAmount('');
     } catch (error) {
-      console.error('Error approving payment:', error);
+      console.error('Error recording payment:', error);
       toast({
         title: "Error",
-        description: "Failed to approve payment. Please try again.",
+        description: "Failed to record payment. Please try again.",
         variant: "destructive"
       });
     }
