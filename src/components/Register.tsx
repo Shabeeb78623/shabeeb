@@ -125,7 +125,7 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
       if (success) {
         toast({
           title: "Registration Successful",
-          description: "Your account has been created and is pending approval.",
+          description: "Your account has been created. Please wait for admin approval.",
         });
         onSwitchToLogin();
       } else {

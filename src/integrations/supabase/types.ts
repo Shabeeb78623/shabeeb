@@ -38,6 +38,30 @@ export type Database = {
         }
         Relationships: []
       }
+      card_templates: {
+        Row: {
+          created_at: string | null
+          field_positions: Json
+          id: string
+          is_active: boolean | null
+          template_url: string
+        }
+        Insert: {
+          created_at?: string | null
+          field_positions?: Json
+          id?: string
+          is_active?: boolean | null
+          template_url: string
+        }
+        Update: {
+          created_at?: string | null
+          field_positions?: Json
+          id?: string
+          is_active?: boolean | null
+          template_url?: string
+        }
+        Relationships: []
+      }
       change_requests: {
         Row: {
           created_at: string | null
