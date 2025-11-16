@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
 import { Upload, FileText, CheckCircle } from 'lucide-react';
 import { User } from '../types/user';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CSVImportProps {
   onImportComplete: (users: User[]) => void;
@@ -111,7 +112,7 @@ const CSVImport: React.FC<CSVImportProps> = ({ onImportComplete }) => {
     if (!file) {
       toast({
         title: "No File Selected",
-        description: "Please select a CSV file to import.",
+        description: "Please select a CSV file first.",
         variant: "destructive"
       });
       return;
@@ -121,44 +122,71 @@ const CSVImport: React.FC<CSVImportProps> = ({ onImportComplete }) => {
     setProgress(0);
 
     try {
-      const progressInterval = setInterval(() => {
-        setProgress(prev => Math.min(prev + 10, 90));
-      }, 200);
+      const parsedUsers = await processCSVFile(file);
+      setProgress(25);
 
-      const users = await processCSVFile(file);
-      
-      clearInterval(progressInterval);
-      setProgress(95);
+      // Create auth accounts and profiles for each user
+      for (let i = 0; i < parsedUsers.length; i++) {
+        const user = parsedUsers[i];
+        
+        try {
+          // Create auth user
+          const { data: authData, error: signUpError } = await supabase.auth.signUp({
+            email: user.email || `${user.mobileNo}@imported.local`,
+            password: user.emiratesId || `temp${Date.now()}`,
+            options: {
+              data: {
+                full_name: user.fullName
+              }
+            }
+          });
 
-      // Process users in batches to avoid performance issues
-      const batchSize = 50;
-      const batches = [];
-      for (let i = 0; i < users.length; i += batchSize) {
-        batches.push(users.slice(i, i + batchSize));
-      }
+          if (signUpError) throw signUpError;
 
-      // Import in batches with small delays
-      for (let i = 0; i < batches.length; i++) {
-        await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
-        if (i === batches.length - 1) {
-          onImportComplete(users); // Import all at once at the end
+          // Create profile
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert({
+              id: authData.user!.id,
+              full_name: user.fullName,
+              phone_number: user.mobileNo,
+              email: user.email || `${user.mobileNo}@imported.local`,
+              emirate: user.emirate,
+              mandalam: user.mandalam,
+              emirates_id: user.emiratesId,
+              status: 'approved',
+              registration_year: new Date().getFullYear()
+            });
+
+          if (profileError) throw profileError;
+
+          // Create user role
+          await supabase
+            .from('user_roles')
+            .insert({
+              user_id: authData.user!.id,
+              role: 'user'
+            });
+
+          setProgress(25 + (i + 1) / parsedUsers.length * 75);
+        } catch (error) {
+          console.error(`Error importing user ${user.fullName}:`, error);
         }
       }
 
-      setProgress(100);
-
       toast({
         title: "Import Successful",
-        description: `Successfully imported ${users.length} users. Username: Phone Number, Password: Emirates ID`,
+        description: `Successfully imported ${parsedUsers.length} users.`,
       });
-
+      
       setFile(null);
       setProgress(0);
+      onImportComplete(parsedUsers);
     } catch (error) {
       console.error('Import error:', error);
       toast({
         title: "Import Failed",
-        description: "Failed to process the CSV file. Please check the format and try again.",
+        description: "Failed to import users. Please check your CSV format.",
         variant: "destructive"
       });
     } finally {

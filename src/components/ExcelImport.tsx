@@ -8,6 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { Upload, FileSpreadsheet, CheckCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { User } from '../types/user';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ExcelImportProps {
   onImportComplete: (users: User[]) => void;
@@ -149,7 +150,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImportComplete }) => {
     if (!file) {
       toast({
         title: "No File Selected",
-        description: "Please select an Excel file to import.",
+        description: "Please select an Excel file first.",
         variant: "destructive"
       });
       return;
@@ -159,28 +160,71 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImportComplete }) => {
     setProgress(0);
 
     try {
-      const progressInterval = setInterval(() => {
-        setProgress(prev => Math.min(prev + 10, 90));
-      }, 200);
+      const parsedUsers = await processExcelFile(file);
+      setProgress(25);
 
-      const users = await processExcelFile(file);
-      
-      clearInterval(progressInterval);
-      setProgress(100);
+      // Create auth accounts and profiles for each user
+      for (let i = 0; i < parsedUsers.length; i++) {
+        const user = parsedUsers[i];
+        
+        try {
+          // Create auth user
+          const { data: authData, error: signUpError } = await supabase.auth.signUp({
+            email: user.email || `${user.mobileNo}@imported.local`,
+            password: user.emiratesId || `temp${Date.now()}`,
+            options: {
+              data: {
+                full_name: user.fullName
+              }
+            }
+          });
 
-      onImportComplete(users);
+          if (signUpError) throw signUpError;
+
+          // Create profile
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert({
+              id: authData.user!.id,
+              full_name: user.fullName,
+              phone_number: user.mobileNo,
+              email: user.email || `${user.mobileNo}@imported.local`,
+              emirate: user.emirate,
+              mandalam: user.mandalam,
+              emirates_id: user.emiratesId,
+              status: 'approved',
+              registration_year: new Date().getFullYear()
+            });
+
+          if (profileError) throw profileError;
+
+          // Create user role
+          await supabase
+            .from('user_roles')
+            .insert({
+              user_id: authData.user!.id,
+              role: 'user'
+            });
+
+          setProgress(25 + (i + 1) / parsedUsers.length * 75);
+        } catch (error) {
+          console.error(`Error importing user ${user.fullName}:`, error);
+        }
+      }
 
       toast({
         title: "Import Successful",
-        description: `Successfully imported ${users.length} users with automatic account creation. Username: Phone Number, Password: Emirates ID`,
+        description: `Successfully imported ${parsedUsers.length} users.`,
       });
-
+      
       setFile(null);
       setProgress(0);
+      onImportComplete(parsedUsers);
     } catch (error) {
+      console.error('Import error:', error);
       toast({
         title: "Import Failed",
-        description: "Failed to process the Excel file. Please check the format and try again.",
+        description: "Failed to import users. Please check your file format.",
         variant: "destructive"
       });
     } finally {

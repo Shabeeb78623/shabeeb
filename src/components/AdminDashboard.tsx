@@ -23,6 +23,8 @@ import CustomAdminManager from './CustomAdminManager';
 import NewYearManager from './NewYearManager';
 import ExcelImport from './ExcelImport';
 import EnhancedMessageManager from './EnhancedMessageManager';
+import ChangeRequestsManager from './ChangeRequestsManager';
+import CardTemplateManager from './CardTemplateManager';
 import * as XLSX from 'xlsx';
 import { Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -997,6 +999,20 @@ const AdminDashboard: React.FC = () => {
                   currentYear={currentYear}
                   availableYears={availableYears}
                 />
+              </TabsContent>
+            )}
+
+            {/* Change Requests Tab */}
+            {isMasterAdmin && (
+              <TabsContent value="change-requests" className="space-y-4">
+                <ChangeRequestsManager />
+              </TabsContent>
+            )}
+
+            {/* Card Template Tab */}
+            {isMasterAdmin && (
+              <TabsContent value="card-template" className="space-y-4">
+                <CardTemplateManager />
               </TabsContent>
             )}
           </ResponsiveAdminTabs>
