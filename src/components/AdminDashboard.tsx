@@ -473,22 +473,48 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleImportComplete = (importedUsers: User[]) => {
-    const updatedUsers = [...users, ...importedUsers];
-    setUsers(updatedUsers);
-    
-    // Update yearly data
-    const yearlyData = JSON.parse(localStorage.getItem('yearlyData') || '[]');
-    const updatedYearlyData = yearlyData.map((data: any) => 
-      data.year === currentYear ? { ...data, users: updatedUsers } : data
-    );
-    localStorage.setItem('yearlyData', JSON.stringify(updatedYearlyData));
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-    
-    toast({
-      title: "Import Completed",
-      description: `Successfully imported ${importedUsers.length} users with auto-approved accounts.`,
-    });
+  const handleImportComplete = async (importedUsers: User[]) => {
+    try {
+      // Save each user to Supabase profiles table
+      const userProfiles = importedUsers.map(user => ({
+        id: crypto.randomUUID(), // Generate new UUID for each user
+        full_name: user.fullName,
+        phone_number: user.mobileNo,
+        email: user.email || null,
+        emirates_id: user.emiratesId || null,
+        emirate: user.emirate,
+        mandalam: user.mandalam,
+        registration_year: currentYear,
+        status: 'approved' as const,
+        profile_photo_url: null,
+        payment_amount: null,
+        payment_date: null,
+        payment_proof_url: null,
+        payment_transaction_id: null
+      }));
+
+      // Insert all profiles
+      const { error } = await supabase
+        .from('profiles')
+        .insert(userProfiles);
+
+      if (error) throw error;
+
+      // Reload users from database
+      await loadUsers();
+
+      toast({
+        title: "Import Successful",
+        description: `Successfully imported ${importedUsers.length} users to database`,
+      });
+    } catch (error) {
+      console.error('Error importing users:', error);
+      toast({
+        title: "Import Failed",
+        description: "Failed to save imported users to database",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleNewYear = (year: number) => {

@@ -65,6 +65,9 @@ const AccountCenter: React.FC<AccountCenterProps> = ({
     return !value || value === '' || value === null || value === undefined;
   };
 
+  // Check if user has any missing required fields
+  const hasMissingInfo = !user.fullName || !user.mobileNo || !user.emirate || !user.mandalam || !user.emiratesId;
+
   return (
     <div className="space-y-6">
       <Card>
@@ -101,22 +104,24 @@ const AccountCenter: React.FC<AccountCenterProps> = ({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Edit className="h-5 w-5" />
-            Profile Management
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600">
-              You can edit missing information directly. To change existing data, submit a change request for admin approval.
-            </p>
-            <UserProfileEditor user={user} onUpdateUser={onUpdateUser} />
-          </div>
-        </CardContent>
-      </Card>
+      {hasMissingInfo && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Edit className="h-5 w-5" />
+              Complete Your Profile
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                Please complete your profile information. Once completed, this section will be hidden.
+              </p>
+              <UserProfileEditor user={user} onUpdateUser={onUpdateUser} />
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

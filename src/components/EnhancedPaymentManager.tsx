@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { User } from '../types/user';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -51,6 +52,59 @@ const EnhancedPaymentManager: React.FC<EnhancedPaymentManagerProps> = ({ users, 
     
     return matchesSearch && matchesStatus && matchesMandalam && matchesPaidTo;
   });
+
+  const handleApprovePayment = async (userId: string) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          status: 'approved'
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Payment Approved",
+        description: "User payment has been approved successfully.",
+      });
+    } catch (error) {
+      console.error('Error approving payment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to approve payment. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleResetPayment = async (userId: string) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          payment_amount: null,
+          payment_date: null,
+          payment_transaction_id: null,
+          status: 'pending'
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Payment Reset",
+        description: "User payment has been reset successfully.",
+      });
+    } catch (error) {
+      console.error('Error resetting payment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to reset payment. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
 
   const handleMarkAsPaid = async (recipientName: string, amount: number) => {
     if (!selectedUser) return;
@@ -248,54 +302,76 @@ const EnhancedPaymentManager: React.FC<EnhancedPaymentManagerProps> = ({ users, 
                     {user.paymentRemarks || '-'}
                   </TableCell>
                   <TableCell>
-                    {!user.paymentStatus && (
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button 
-                            size="sm" 
-                            onClick={() => setSelectedUser(user)}
-                          >
-                            Mark as Paid
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Mark Payment as Paid</DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4">
-                            <div>
-                              <p className="font-medium">User: {user.fullName}</p>
-                              <p className="text-sm text-gray-600">Reg No: {user.regNo}</p>
-                            </div>
-                            <Select value={selectedRecipient} onValueChange={setSelectedRecipient}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select who received payment" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {paymentRecipients.map((recipient) => (
-                                  <SelectItem key={recipient.id} value={recipient.name}>
-                                    {recipient.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <Input
-                              type="number"
-                              placeholder="Amount (AED)"
-                              value={paidAmount}
-                              onChange={(e) => setPaidAmount(e.target.value)}
-                            />
-                            <Button
-                              onClick={() => handleMarkAsPaid(selectedRecipient, Number(paidAmount))}
-                              disabled={!selectedRecipient || !paidAmount}
-                              className="w-full"
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      {!user.paymentStatus && !user.paymentAmount && (
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button 
+                              size="sm" 
+                              onClick={() => setSelectedUser(user)}
                             >
-                              Confirm Payment
+                              Record Payment
                             </Button>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    )}
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Record Payment for {user.fullName}</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div>
+                                <Label>Select Recipient</Label>
+                                <Select value={selectedRecipient} onValueChange={setSelectedRecipient}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select recipient" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {paymentRecipients.map(recipient => (
+                                      <SelectItem key={recipient.id} value={recipient.name}>
+                                        {recipient.name} ({recipient.contact})
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label>Amount Paid (AED)</Label>
+                                <Input
+                                  type="number"
+                                  value={paidAmount}
+                                  onChange={(e) => setPaidAmount(e.target.value)}
+                                  placeholder="Enter amount"
+                                />
+                              </div>
+                              <Button 
+                                onClick={() => handleMarkAsPaid(selectedRecipient, Number(paidAmount))}
+                                disabled={!selectedRecipient || !paidAmount}
+                                className="w-full"
+                              >
+                                Record Payment
+                              </Button>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      )}
+                      {user.paymentAmount && !user.paymentStatus && (
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleApprovePayment(user.id)}
+                          variant="default"
+                        >
+                          Approve
+                        </Button>
+                      )}
+                      {user.paymentAmount && (
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleResetPayment(user.id)}
+                          variant="destructive"
+                        >
+                          Reset
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
