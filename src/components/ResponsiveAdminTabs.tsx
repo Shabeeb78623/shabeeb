@@ -75,16 +75,6 @@ const ResponsiveAdminTabs: React.FC<ResponsiveAdminTabsProps> = ({
               New Year
             </TabsTrigger>
           )}
-          {isMasterAdmin && (
-            <TabsTrigger value="change-requests" className="text-xs px-2 py-1 whitespace-nowrap">
-              Change Requests
-            </TabsTrigger>
-          )}
-          {isMasterAdmin && (
-            <TabsTrigger value="card-template" className="text-xs px-2 py-1 whitespace-nowrap">
-              Card Template
-            </TabsTrigger>
-          )}
         </TabsList>
       </div>
       {children}

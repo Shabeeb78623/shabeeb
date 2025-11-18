@@ -35,14 +35,11 @@ const NewYearManager: React.FC<NewYearManagerProps> = ({
   const handleCreateNewYear = async () => {
     setLoading(true);
     try {
+      // Get existing yearly data
+      const yearlyData: YearlyData[] = JSON.parse(localStorage.getItem('yearlyData') || '[]');
+      
       // Check if year already exists
-      const { data: existingYear } = await supabase
-        .from('year_configs')
-        .select('*')
-        .eq('year', selectedYear)
-        .single();
-
-      if (existingYear) {
+      if (yearlyData.some(data => data.year === selectedYear)) {
         toast({
           title: "Year Already Exists",
           description: `Year ${selectedYear} already exists in the system.`,
@@ -51,39 +48,36 @@ const NewYearManager: React.FC<NewYearManagerProps> = ({
         return;
       }
 
-      // Deactivate all existing years
-      await supabase
-        .from('year_configs')
-        .update({ is_active: false })
-        .eq('is_active', true);
-
-      // Create new year
-      const { error } = await supabase
-        .from('year_configs')
-        .insert({
-          year: selectedYear,
-          is_active: true
+      // Check if selected year is valid
+      if (selectedYear <= currentYear) {
+        toast({
+          title: "Invalid Year",
+          description: "Please select a future year.",
+          variant: "destructive"
         });
-
-      if (error) throw error;
-
-      // Notify all users
-      const { data: allUsers } = await supabase
-        .from('profiles')
-        .select('id');
-
-      if (allUsers) {
-        await supabase
-          .from('notifications')
-          .insert(
-            allUsers.map(u => ({
-              user_id: u.id,
-              title: 'New Year Registration Open',
-              message: `Registration for ${selectedYear} is now open. Renew your membership to continue enjoying benefits.`,
-              sent_by: 'System'
-            }))
-          );
+        return;
       }
+
+      console.log('Creating new year:', selectedYear);
+
+      // Deactivate all existing years
+      const updatedYearlyData = yearlyData.map(data => ({ ...data, isActive: false }));
+      
+      // Create new year data with empty users array
+      const newYearData: YearlyData = {
+        year: selectedYear,
+        users: [],
+        isActive: true
+      };
+      updatedYearlyData.push(newYearData);
+
+      // Update storage
+      localStorage.setItem('yearlyData', JSON.stringify(updatedYearlyData));
+      localStorage.setItem('currentYear', JSON.stringify(selectedYear));
+      
+      // Update available years
+      const newAvailableYears = [...availableYears, selectedYear].sort((a, b) => a - b);
+      localStorage.setItem('availableYears', JSON.stringify(newAvailableYears));
 
       // Get all users from all years for notification
       const allUsers: User[] = [];

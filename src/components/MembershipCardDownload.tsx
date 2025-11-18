@@ -1,90 +1,116 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Download, Settings } from 'lucide-react';
 import { User } from '../types/user';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import QRCode from 'qrcode';
-import { supabase } from '@/integrations/supabase/client';
 
 interface MembershipCardDownloadProps {
   user: User;
 }
 
 interface CardTemplate {
-  template_url: string;
-  field_positions: {
-    photo: { x: number; y: number; size: number };
-    name: { x: number; y: number };
-    regNo: { x: number; y: number };
-    emirate: { x: number; y: number };
-    mobile: { x: number; y: number };
-    mandalam: { x: number; y: number };
-    qr: { x: number; y: number; size: number };
-  };
+  backgroundColor: string;
+  textColor: string;
+  accentColor: string;
+  photoX: number;
+  photoY: number;
+  photoSize: number;
+  nameX: number;
+  nameY: number;
+  qrX: number;
+  qrY: number;
+  qrSize: number;
 }
 
 const MembershipCardDownload: React.FC<MembershipCardDownloadProps> = ({ user }) => {
-  const [template, setTemplate] = useState<CardTemplate | null>(null);
-
-  useEffect(() => {
-    loadTemplate();
-  }, []);
-
-  const loadTemplate = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('card_templates')
-        .select('*')
-        .eq('is_active', true)
-        .single();
-
-      if (error && error.code !== 'PGRST116') throw error;
-      
-      if (data) {
-        setTemplate(data as unknown as CardTemplate);
-      }
-    } catch (error) {
-      console.error('Error loading template:', error);
-    }
-  };
-
+  const [template, setTemplate] = useState<CardTemplate>({
+    backgroundColor: '#2563eb',
+    textColor: '#ffffff',
+    accentColor: '#60a5fa',
+    photoX: 20,
+    photoY: 40,
+    photoSize: 64,
+    nameX: 100,
+    nameY: 50,
+    qrX: 300,
+    qrY: 150,
+    qrSize: 80
+  });
 
   const downloadPDF = async () => {
-    if (!template) {
-      alert('No template configured. Please ask admin to set up a card template.');
-      return;
-    }
-
     const cardElement = document.createElement('div');
     cardElement.style.width = '384px';
     cardElement.style.height = '256px';
+    cardElement.style.background = `linear-gradient(135deg, ${template.backgroundColor}, ${template.accentColor})`;
+    cardElement.style.color = template.textColor;
+    cardElement.style.padding = '24px';
+    cardElement.style.borderRadius = '8px';
     cardElement.style.position = 'relative';
-    cardElement.style.backgroundImage = `url(${template.template_url})`;
-    cardElement.style.backgroundSize = 'cover';
+    cardElement.style.fontFamily = 'Arial, sans-serif';
     
-    // Generate QR code
+    // Generate QR code with user data
     const qrData = JSON.stringify({
       id: user.id,
       name: user.fullName,
       regNo: user.regNo,
       year: user.registrationYear
     });
-    const qrCodeDataUrl = await QRCode.toDataURL(qrData, { width: template.field_positions.qr.size });
-    
-    const pos = template.field_positions;
+    const qrCodeDataUrl = await QRCode.toDataURL(qrData, { width: template.qrSize });
     
     cardElement.innerHTML = `
-      ${user.photo ? 
-        `<img src="${user.photo}" style="position: absolute; left: ${pos.photo.x}px; top: ${pos.photo.y}px; width: ${pos.photo.size}px; height: ${pos.photo.size}px; border-radius: 50%; object-fit: cover;" />` :
-        ''
-      }
-      <div style="position: absolute; left: ${pos.name.x}px; top: ${pos.name.y}px; font-weight: 600; font-size: 14px;">${user.fullName}</div>
-      <div style="position: absolute; left: ${pos.regNo.x}px; top: ${pos.regNo.y}px; font-size: 12px;">Reg: ${user.regNo}</div>
-      <div style="position: absolute; left: ${pos.emirate.x}px; top: ${pos.emirate.y}px; font-size: 12px;">${user.emirate}</div>
-      <div style="position: absolute; left: ${pos.mobile.x}px; top: ${pos.mobile.y}px; font-size: 12px;">${user.mobileNo}</div>
-      <div style="position: absolute; left: ${pos.mandalam.x}px; top: ${pos.mandalam.y}px; font-size: 12px;">${user.mandalam}</div>
-      <img src="${qrCodeDataUrl}" style="position: absolute; left: ${pos.qr.x}px; top: ${pos.qr.y}px; width: ${pos.qr.size}px; height: ${pos.qr.size}px;" />
+      <div style="position: absolute; top: 0; left: 0; width: 100%; padding: 24px;">
+        <div style="text-align: center; margin-bottom: 16px;">
+          <h2 style="font-size: 20px; font-weight: bold; margin: 0;">KMCC Pratheeksha</h2>
+          <p style="font-size: 14px; opacity: 0.9; margin: 4px 0;">Membership Card</p>
+        </div>
+        
+        <div style="position: absolute; left: ${template.photoX}px; top: ${template.photoY}px;">
+          ${user.photo ? 
+            `<img src="${user.photo}" style="width: ${template.photoSize}px; height: ${template.photoSize}px; border-radius: 50%; object-fit: cover; border: 2px solid ${template.textColor};" />` :
+            `<div style="width: ${template.photoSize}px; height: ${template.photoSize}px; border-radius: 50%; background: rgba(255,255,255,0.2); border: 2px solid ${template.textColor}; display: flex; align-items: center; justify-content: center; font-size: 10px;">No Photo</div>`
+          }
+        </div>
+        
+        <div style="position: absolute; left: ${template.nameX}px; top: ${template.nameY}px; max-width: 180px;">
+          <div style="margin-bottom: 8px;">
+            <p style="font-size: 12px; opacity: 0.75; margin: 0;">Member Name</p>
+            <p style="font-weight: 600; margin: 4px 0; font-size: 14px;">${user.fullName}</p>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+            <div>
+              <p style="font-size: 10px; opacity: 0.75; margin: 0;">Reg. No.</p>
+              <p style="font-weight: 500; font-size: 12px; margin: 2px 0;">${user.regNo}</p>
+            </div>
+            <div>
+              <p style="font-size: 10px; opacity: 0.75; margin: 0;">Emirates</p>
+              <p style="font-weight: 500; font-size: 12px; margin: 2px 0;">${user.emirate}</p>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div>
+              <p style="font-size: 10px; opacity: 0.75; margin: 0;">Mobile</p>
+              <p style="font-weight: 500; font-size: 12px; margin: 2px 0;">${user.mobileNo}</p>
+            </div>
+            <div>
+              <p style="font-size: 10px; opacity: 0.75; margin: 0;">Mandalam</p>
+              <p style="font-weight: 500; font-size: 12px; margin: 2px 0;">${user.mandalam}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div style="position: absolute; right: ${384 - template.qrX}px; bottom: ${256 - template.qrY}px;">
+          <img src="${qrCodeDataUrl}" style="width: ${template.qrSize}px; height: ${template.qrSize}px; background: white; padding: 4px; border-radius: 4px;" />
+        </div>
+        
+        <div style="position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); text-align: center; font-size: 10px; opacity: 0.75;">
+          Valid for Year ${user.registrationYear}
+        </div>
+      </div>
     `;
     
     document.body.appendChild(cardElement);
@@ -106,12 +132,127 @@ const MembershipCardDownload: React.FC<MembershipCardDownloadProps> = ({ user })
     }
   };
 
-
   return (
-    <Button onClick={downloadPDF} variant="outline" size="sm" disabled={!template}>
-      <Download className="h-4 w-4 mr-2" />
-      Download Card
-    </Button>
+    <div className="flex gap-2">
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm">
+            <Settings className="h-4 w-4 mr-2" />
+            Customize Card
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Customize Membership Card</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
+              <div>
+                <Label>Background Color</Label>
+                <Input
+                  type="color"
+                  value={template.backgroundColor}
+                  onChange={(e) => setTemplate({ ...template, backgroundColor: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>Text Color</Label>
+                <Input
+                  type="color"
+                  value={template.textColor}
+                  onChange={(e) => setTemplate({ ...template, textColor: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>Accent Color</Label>
+                <Input
+                  type="color"
+                  value={template.accentColor}
+                  onChange={(e) => setTemplate({ ...template, accentColor: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <Label>Photo X</Label>
+                  <Input
+                    type="number"
+                    value={template.photoX}
+                    onChange={(e) => setTemplate({ ...template, photoX: parseInt(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <Label>Photo Y</Label>
+                  <Input
+                    type="number"
+                    value={template.photoY}
+                    onChange={(e) => setTemplate({ ...template, photoY: parseInt(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <Label>Photo Size</Label>
+                  <Input
+                    type="number"
+                    value={template.photoSize}
+                    onChange={(e) => setTemplate({ ...template, photoSize: parseInt(e.target.value) })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>Name X</Label>
+                  <Input
+                    type="number"
+                    value={template.nameX}
+                    onChange={(e) => setTemplate({ ...template, nameX: parseInt(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <Label>Name Y</Label>
+                  <Input
+                    type="number"
+                    value={template.nameY}
+                    onChange={(e) => setTemplate({ ...template, nameY: parseInt(e.target.value) })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <Label>QR X</Label>
+                  <Input
+                    type="number"
+                    value={template.qrX}
+                    onChange={(e) => setTemplate({ ...template, qrX: parseInt(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <Label>QR Y</Label>
+                  <Input
+                    type="number"
+                    value={template.qrY}
+                    onChange={(e) => setTemplate({ ...template, qrY: parseInt(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <Label>QR Size</Label>
+                  <Input
+                    type="number"
+                    value={template.qrSize}
+                    onChange={(e) => setTemplate({ ...template, qrSize: parseInt(e.target.value) })}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      <Button onClick={downloadPDF} variant="outline" size="sm">
+        <Download className="h-4 w-4 mr-2" />
+        Download Card
+      </Button>
+    </div>
   );
 };
 
