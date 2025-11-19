@@ -70,7 +70,7 @@ const CSVImport: React.FC<CSVImportProps> = ({ onImportComplete }) => {
               relation: (row['relation'] as any) || 'Father',
               emirate: row['emirate'] || '',
               mandalam: (row['mandalam'] as any) || 'BALUSHERI',
-              email: row['email'] || '',
+              email: '', // Leave email empty so users must add it after import
               addressUAE: row['address uae'] || row['uae address'] || '',
               addressIndia: row['address india'] || row['india address'] || '',
               kmccMember: row['kmcc member'] === 'yes' || row['kmcc member'] === 'true' || row['kmcc'] === 'yes',
@@ -90,7 +90,7 @@ const CSVImport: React.FC<CSVImportProps> = ({ onImportComplete }) => {
               notifications: [{
                 id: Date.now().toString() + index,
                 title: 'Account Created via Import',
-                message: `Welcome ${fullName}! Your account has been created. Username: ${mobileNo}, Password: ${emiratesId}. Please login and update your credentials.`,
+                message: `Welcome ${fullName}! Your account has been created. Please complete your profile by adding your email address.`,
                 date: new Date().toISOString(),
                 isRead: false,
                 sentBy: 'System Import'

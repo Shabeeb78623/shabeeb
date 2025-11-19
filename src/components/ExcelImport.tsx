@@ -109,7 +109,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImportComplete }) => {
               relation: normalizedRow.relation || 'Father',
               emirate: normalizedRow.emirate || '',
               mandalam: normalizedRow.mandalam || 'BALUSHERI',
-              email: normalizedRow.email || '',
+              email: '', // Leave email empty so users must add it after import
               addressUAE: normalizedRow.addressUAE || normalizedRow.address || '',
               addressIndia: normalizedRow.addressIndia || normalizedRow.address || '',
               kmccMember: normalizedRow.kmccMember === true || normalizedRow.kmccMember === 'true' || normalizedRow.kmccMember === 'Yes' || normalizedRow.kmccMember === '1',
@@ -128,7 +128,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImportComplete }) => {
               notifications: [{
                 id: Date.now().toString(),
                 title: 'Account Created!',
-                message: `Welcome ${normalizedRow.fullName || 'User'}! Your account has been created automatically. Username: ${mobileNo}, Password: ${emiratesId}. Please login and complete your profile.`,
+                message: `Welcome ${normalizedRow.fullName || 'User'}! Your account has been created. Please complete your profile by adding your email address.`,
                 date: new Date().toISOString(),
                 isRead: false,
                 sentBy: 'System Import'

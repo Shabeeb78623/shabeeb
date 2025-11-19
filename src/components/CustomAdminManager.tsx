@@ -65,11 +65,13 @@ const CustomAdminManager: React.FC<CustomAdminManagerProps> = ({ users, onUpdate
 
     try {
       // First check if role exists
-      const { data: existingRole } = await supabase
+      const { data: existingRole, error: selectError } = await supabase
         .from('user_roles')
         .select('*')
         .eq('user_id', selectedUser.id)
-        .single();
+        .maybeSingle();
+
+      if (selectError) throw selectError;
 
       let error;
       if (existingRole) {
@@ -105,6 +107,9 @@ const CustomAdminManager: React.FC<CustomAdminManagerProps> = ({ users, onUpdate
 
       setSelectedUser(null);
       resetPermissions();
+      
+      // Trigger parent component to reload users
+      onUpdateUser(selectedUser);
     } catch (error) {
       console.error('Error assigning admin:', error);
       toast({
@@ -122,8 +127,13 @@ const CustomAdminManager: React.FC<CustomAdminManagerProps> = ({ users, onUpdate
     try {
       const { error } = await supabase
         .from('user_roles')
-        .update({ role: 'user', mandalam_access: null })
-        .eq('user_id', userId);
+        .upsert({
+          user_id: userId,
+          role: 'user',
+          mandalam_access: null
+        }, {
+          onConflict: 'user_id'
+        });
 
       if (error) throw error;
 
@@ -131,6 +141,9 @@ const CustomAdminManager: React.FC<CustomAdminManagerProps> = ({ users, onUpdate
         title: "Admin Role Removed",
         description: `${user.fullName} is now a regular user.`,
       });
+      
+      // Trigger parent component to reload users
+      onUpdateUser(user);
     } catch (error) {
       console.error('Error removing admin role:', error);
       toast({
@@ -152,6 +165,8 @@ const CustomAdminManager: React.FC<CustomAdminManagerProps> = ({ users, onUpdate
           user_id: userId,
           role: 'mandalam_admin',
           mandalam_access: mandalam
+        }, {
+          onConflict: 'user_id'
         });
 
       if (error) throw error;
@@ -160,6 +175,9 @@ const CustomAdminManager: React.FC<CustomAdminManagerProps> = ({ users, onUpdate
         title: "Mandalam Admin Assigned",
         description: `${user.fullName} is now admin for ${mandalam} mandalam.`,
       });
+      
+      // Trigger parent component to reload users
+      onUpdateUser(user);
     } catch (error) {
       console.error('Error assigning mandalam admin:', error);
       toast({
@@ -176,25 +194,35 @@ const CustomAdminManager: React.FC<CustomAdminManagerProps> = ({ users, onUpdate
 
     try {
       // Check current role
-      const { data: currentRole } = await supabase
+      const { data: currentRole, error: selectError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
-      const newRole = currentRole?.role === 'mandalam_admin' ? 'user' : 'mandalam_admin';
+      if (selectError) throw selectError;
+
+      const newRole = currentRole?.role === 'master_admin' ? 'user' : 'master_admin';
 
       const { error } = await supabase
         .from('user_roles')
-        .update({ role: newRole, mandalam_access: null })
-        .eq('user_id', userId);
+        .upsert({
+          user_id: userId,
+          role: newRole,
+          mandalam_access: null
+        }, {
+          onConflict: 'user_id'
+        });
 
       if (error) throw error;
 
       toast({
         title: "Role Updated",
-        description: `${user.fullName} is now ${newRole === 'mandalam_admin' ? 'an admin' : 'a user'}.`,
+        description: `${user.fullName} is now ${newRole === 'master_admin' ? 'a master admin' : 'a regular user'}.`,
       });
+      
+      // Trigger parent component to reload users
+      onUpdateUser(user);
     } catch (error) {
       console.error('Error toggling admin role:', error);
       toast({

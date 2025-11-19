@@ -475,43 +475,89 @@ const AdminDashboard: React.FC = () => {
 
   const handleImportComplete = async (importedUsers: User[]) => {
     try {
-      // Save each user to Supabase profiles table
-      const userProfiles = importedUsers.map(user => ({
-        id: crypto.randomUUID(), // Generate new UUID for each user
-        full_name: user.fullName,
-        phone_number: user.mobileNo,
-        email: user.email || null,
-        emirates_id: user.emiratesId || null,
-        emirate: user.emirate,
-        mandalam: user.mandalam,
-        registration_year: currentYear,
-        status: 'approved' as const,
-        profile_photo_url: null,
-        payment_amount: null,
-        payment_date: null,
-        payment_proof_url: null,
-        payment_transaction_id: null
-      }));
+      let successCount = 0;
+      let failCount = 0;
 
-      // Insert all profiles
-      const { error } = await supabase
-        .from('profiles')
-        .insert(userProfiles);
+      // Process users one by one to handle errors gracefully
+      for (const user of importedUsers) {
+        try {
+          // Create auth user first (with a temporary password they'll need to reset)
+          const tempPassword = crypto.randomUUID().substring(0, 16);
+          const userEmail = user.email && user.email.trim() !== '' 
+            ? user.email 
+            : null;
 
-      if (error) throw error;
+          // Only create auth user if email is provided
+          let authUserId: string;
+          if (userEmail) {
+            const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+              email: userEmail,
+              password: tempPassword,
+              email_confirm: true
+            });
+
+            if (authError) throw authError;
+            authUserId = authData.user.id;
+          } else {
+            // Generate a UUID for users without email (they won't be able to log in until they add email)
+            authUserId = crypto.randomUUID();
+          }
+
+          // Insert profile with the auth user ID
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert({
+              id: authUserId,
+              full_name: user.fullName,
+              phone_number: user.mobileNo,
+              email: userEmail,
+              emirates_id: user.emiratesId || null,
+              emirate: user.emirate,
+              mandalam: user.mandalam,
+              registration_year: currentYear,
+              status: 'approved',
+              profile_photo_url: null,
+              payment_amount: null,
+              payment_date: null,
+              payment_proof_url: null,
+              payment_transaction_id: null
+            });
+
+          if (profileError) throw profileError;
+
+          // Create default user role
+          const { error: roleError } = await supabase
+            .from('user_roles')
+            .insert({
+              user_id: authUserId,
+              role: 'user'
+            });
+
+          if (roleError) throw roleError;
+
+          successCount++;
+        } catch (userError) {
+          console.error(`Failed to import user ${user.fullName}:`, userError);
+          failCount++;
+        }
+      }
 
       // Reload users from database
       await loadUsers();
 
-      toast({
-        title: "Import Successful",
-        description: `Successfully imported ${importedUsers.length} users to database`,
-      });
+      if (successCount > 0) {
+        toast({
+          title: "Import Complete",
+          description: `Successfully imported ${successCount} users${failCount > 0 ? `, ${failCount} failed` : ''}`,
+        });
+      } else {
+        throw new Error("All imports failed");
+      }
     } catch (error) {
       console.error('Error importing users:', error);
       toast({
         title: "Import Failed",
-        description: "Failed to save imported users to database",
+        description: "Failed to save imported users to database. Please check the data format.",
         variant: "destructive"
       });
     }
