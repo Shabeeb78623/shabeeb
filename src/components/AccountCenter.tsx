@@ -65,8 +65,8 @@ const AccountCenter: React.FC<AccountCenterProps> = ({
     return !value || value === '' || value === null || value === undefined;
   };
 
-  // Check if user has any missing required fields
-  const hasMissingInfo = !user.fullName || !user.mobileNo || !user.emirate || !user.mandalam || !user.emiratesId;
+  // Check if user has any missing required fields (including email for imported users)
+  const hasMissingInfo = !user.fullName || !user.mobileNo || !user.emirate || !user.mandalam || !user.emiratesId || !user.email || user.email.trim() === '';
 
   return (
     <div className="space-y-6">
